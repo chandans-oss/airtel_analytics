@@ -13,28 +13,35 @@ import {
   Legend,
   LineChart,
   Line,
+  AreaChart,
+  Area,
+  CartesianGrid,
   LabelList,
+  ScatterChart,
+  Scatter,
+  ZAxis,
 } from 'recharts';
+import { cn } from '@/lib/utils';
 import { useInventoryStore } from '@/store/inventoryStore';
 import type { NodeData, LinkData, ChartType, WidgetConfig } from '@/types/inventory';
-import { Settings } from 'lucide-react';
+import { Settings, Download } from 'lucide-react';
 import { WidgetSettingsDialog } from './WidgetSettingsDialog';
 
 const COLORS = {
-  online: 'hsl(160, 84%, 39%)',
-  offline: 'hsl(12, 85%, 55%)',
-  primary: 'hsl(174, 72%, 45%)',
-  accent: 'hsl(210, 100%, 55%)',
-  warning: 'hsl(38, 92%, 50%)',
+  online: '#34C759',
+  offline: '#FF3B30',
+  primary: '#00A58E',
+  accent: '#2196F3',
+  warning: '#FF9800',
   neutral: [
-    'hsl(174, 72%, 45%)',
-    'hsl(210, 100%, 55%)',
-    'hsl(38, 92%, 50%)',
-    'hsl(280, 70%, 55%)',
-    'hsl(320, 70%, 55%)',
-    'hsl(140, 60%, 45%)',
-    'hsl(20, 80%, 55%)',
-    'hsl(200, 70%, 50%)',
+    '#00A58E',
+    '#2196F3',
+    '#FF9800',
+    '#9C27B0',
+    '#E91E63',
+    '#4CAF50',
+    '#FF5722',
+    '#00BCD4',
   ],
 };
 
@@ -82,20 +89,67 @@ export function ChartContainer({ id, title, children }: ChartContainerProps) {
   );
 }
 
+const CustomBarLabel = (props: any) => {
+  const { x, y, width, height, value, onExport, isMini } = props;
+  const categoryName = props.payload?.name;
+
+  // x is the start of the bar, width is the bar length. 
+  // We place the label at the end of the bar plus a margin.
+  const margin = isMini ? 8 : 12;
+  const opacity = props.payload?.opacity ?? 1;
+
+  // If the bar is faded (not selected), hide the count and download icon
+  if (opacity < 1) return null;
+
+  return (
+    <g transform={`translate(${x + width + margin}, ${y + (height ? height / 2 : 0)})`}>
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor="start"
+        fill="hsl(var(--foreground))"
+        fontSize={isMini ? 10 : 12}
+        fontWeight="bold"
+        className="tabular-nums"
+      >
+        {value}
+      </text>
+      {onExport && (
+        <g
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onExport(categoryName);
+          }}
+          style={{ cursor: 'pointer', pointerEvents: 'all' }}
+          transform={`translate(${String(value).length * (isMini ? 8 : 10) + 10}, -6)`}
+          className="opacity-40 hover:opacity-100 transition-opacity"
+        >
+          <rect x="-6" y="-6" width="20" height="20" fill="transparent" />
+          <Download size={isMini ? 10 : 12} className="text-muted-foreground" />
+        </g>
+      )}
+    </g>
+  );
+};
+
 interface CommonChartProps {
   data: any[];
   chartType: ChartType;
   onPointClick: (name: string) => void;
   variant?: 'default' | 'mini';
+  onPointExport?: (name: string) => void;
+  onContextMenu?: (e: React.MouseEvent, name: string) => void;
 }
 
-export function UniversalChartRenderer({ data, chartType, onPointClick, variant = 'default' }: CommonChartProps) {
+export function UniversalChartRenderer({ data, chartType, onPointClick, variant = 'default', onPointExport, onContextMenu }: CommonChartProps) {
   const isMini = variant === 'mini';
-  const height = isMini ? 180 : 260;
-  const yAxisWidth = isMini ? 70 : 100;
+  const height = isMini ? 190 : 260; // Perfectly fits 240px widget with 40px header
+  const yAxisWidth = isMini ? 110 : 120;
   const margin = isMini
-    ? { top: 5, right: 10, left: 10, bottom: 5 }
-    : { top: 5, right: 30, left: 40, bottom: 5 };
+    ? { top: 5, right: 65, left: 15, bottom: 5 }
+    : { top: 20, right: 120, left: 40, bottom: 20 };
 
   switch (chartType) {
     case 'bar':
@@ -105,37 +159,66 @@ export function UniversalChartRenderer({ data, chartType, onPointClick, variant 
           <BarChart
             data={data}
             layout="vertical"
-            margin={margin}
+            margin={{ ...margin, right: (margin.right || 0) + 50 }}
+            barCategoryGap={isMini ? "10%" : "20%"}
+            barGap={2}
           >
             <XAxis type="number" hide />
             <YAxis
               type="category"
               dataKey="name"
-              width={isMini ? 45 : yAxisWidth}
-              tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: isMini ? 8 : 10 }}
+              width={yAxisWidth}
+              tick={(tickProps) => {
+                const { x, y, payload } = tickProps;
+                const entry = data.find((d: any) => d.name === payload.value);
+                const opacity = entry?.opacity ?? 1;
+                return (
+                  <text
+                    x={x}
+                    y={y}
+                    dy={4}
+                    fill="hsl(var(--foreground))"
+                    fontSize={isMini ? 9 : 10}
+                    fontWeight="600"
+                    textAnchor="end"
+                    fillOpacity={opacity}
+                  >
+                    {payload.value}
+                  </text>
+                );
+              }}
               axisLine={false}
               tickLine={false}
               interval={0}
-              textAnchor="end"
             />
             <Tooltip
               contentStyle={customTooltipStyle}
               itemStyle={customItemStyle}
-              cursor={{ fill: 'transparent' }}
+              cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
             />
             <Bar
               dataKey="value"
               fill={COLORS.primary}
-              radius={[0, 4, 4, 0]}
+              radius={[0, 6, 6, 0]}
               onClick={(entry) => onPointClick(entry.name)}
+              onContextMenu={(data: any, index: number, e: any) => onContextMenu && onContextMenu(e, data.name)}
               style={{ cursor: 'pointer' }}
-              barSize={isMini ? 12 : 16}
+              barSize={isMini ? 24 : 32}
             >
               <LabelList
                 dataKey="value"
                 position="right"
-                style={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMini ? '9px' : '10px', fontWeight: 'bold' }}
-                offset={8}
+                content={(props: any) => {
+                  const entry = data[props.index];
+                  return (
+                    <CustomBarLabel
+                      {...props}
+                      payload={entry}
+                      onExport={onPointExport}
+                      isMini={isMini}
+                    />
+                  );
+                }}
               />
               {data.map((entry: any, index: number) => (
                 <Cell
@@ -166,52 +249,178 @@ export function UniversalChartRenderer({ data, chartType, onPointClick, variant 
           </LineChart>
         </ResponsiveContainer>
       );
-    case 'table':
+    case 'area':
       return (
-        <div className="w-full overflow-hidden rounded-md border border-border">
-          <table className="w-full text-left text-[10px]">
-            <thead className="bg-muted/50 font-bold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2 text-right">Value</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {data.map((row: any) => (
-                <tr key={row.name} className="hover:bg-muted/30">
-                  <td className="px-3 py-2 font-medium">{row.name}</td>
-                  <td className="px-3 py-2 text-right">{row.value}</td>
-                </tr>
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <defs>
+              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={customTooltipStyle} itemStyle={customItemStyle} />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={COLORS.primary}
+              strokeWidth={2}
+              fill="url(#colorValue)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+    case 'treemap':
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <Treemap
+            data={data}
+            dataKey="value"
+            aspectRatio={4 / 3}
+            stroke="#fff"
+            fill={COLORS.primary}
+          >
+            <Tooltip contentStyle={customTooltipStyle} itemStyle={customItemStyle} />
+          </Treemap>
+        </ResponsiveContainer>
+      );
+    case 'scatter':
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <ScatterChart margin={margin}>
+            <XAxis type="number" dataKey="x" name="Bandwidth" unit="M" tick={{ fontSize: 9 }} />
+            <YAxis type="number" dataKey="y" name="Value" tick={{ fontSize: 9 }} />
+            <ZAxis type="number" dataKey="z" range={[50, 400]} name="Size" />
+            <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={customTooltipStyle} />
+            <Scatter name="Data" data={data} fill={COLORS.primary}>
+              {data.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.color || COLORS.neutral[index % COLORS.neutral.length]} />
               ))}
-            </tbody>
-          </table>
-        </div>
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
       );
     case 'pie':
     case 'donut':
     default:
       return (
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
-              cy="40%"
-              innerRadius={chartType === 'donut' ? 55 : 0}
-              outerRadius={75}
+              cy="50%"
+              innerRadius={chartType === 'donut' ? 40 : 0}
+              outerRadius={80}
               paddingAngle={2}
               dataKey="value"
               onClick={(entry) => onPointClick(entry.name)}
+              onContextMenu={(data: any, index: number, e: any) => onContextMenu && onContextMenu(e, data.name)}
               style={{ cursor: 'pointer' }}
+              labelLine={true}
+              label={({ cx, cy, midAngle, innerRadius, outerRadius, value, name, percent, index }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = outerRadius + 20;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                const entry = data[index];
+                const opacity = entry?.opacity ?? 1;
+
+                // Hide labels for non-selected slices to keep UI clean
+                if (opacity < 1) return null;
+                if (percent < 0.05 && !isMini) return null;
+
+                return (
+                  <g transform={`translate(${x}, ${y})`}>
+                    <text
+                      x={0}
+                      y={0}
+                      fill="hsl(var(--foreground))"
+                      textAnchor={x > cx ? 'start' : 'end'}
+                      dominantBaseline="central"
+                      fontSize={isMini ? 10 : 11}
+                      fontWeight="700"
+                    >
+                      {isMini ? value : `${name}: ${value}`}
+                    </text>
+                    {onPointExport && (
+                      <g
+                        transform={`translate(${x > cx ? 10 + (isMini ? String(value).length * 6 : (String(name).length + String(value).length) * 6) : -20}, -8)`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onPointExport(name);
+                        }}
+                        className="opacity-40 hover:opacity-100 transition-opacity cursor-pointer group/export"
+                        style={{ pointerEvents: 'all' }}
+                      >
+                        <rect x="-8" y="-8" width="24" height="24" fill="rgba(0,0,0,0)" />
+                        <Download size={isMini ? 10 : 11} className="text-primary" />
+                      </g>
+                    )}
+                  </g>
+                );
+              }}
             >
               {data.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.color || COLORS.neutral[index % COLORS.neutral.length]} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color || COLORS.neutral[index % COLORS.neutral.length]}
+                  fillOpacity={entry.opacity ?? 1}
+                />
               ))}
             </Pie>
             <Tooltip contentStyle={customTooltipStyle} itemStyle={customItemStyle} />
-            <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+            <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ paddingTop: '5px', fontSize: '10px' }} />
           </PieChart>
         </ResponsiveContainer>
+      );
+    case 'table':
+      return (
+        <div className="w-full overflow-hidden rounded-lg border border-border bg-card/50">
+          <table className="w-full text-left text-[11px]">
+            <thead className="bg-muted/50 font-bold uppercase tracking-wider text-muted-foreground/80 border-b border-border/50">
+              <tr>
+                <th className="px-4 py-2.5">Category</th>
+                <th className="px-4 py-2.5 text-right">Count</th>
+                <th className="px-4 py-2.5 text-center">Export</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/30">
+              {data.map((row: any) => (
+                <tr
+                  key={row.name}
+                  className={cn(
+                    "hover:bg-primary/5 transition-all cursor-pointer group/row",
+                    row.opacity < 1 && "opacity-20 grayscale-[0.5]"
+                  )}
+                  style={{ opacity: row.opacity ?? 1 }}
+                  onClick={() => onPointClick(row.name)}
+                >
+                  <td className="px-4 py-2.5 font-semibold text-foreground/90">{row.name}</td>
+                  <td className="px-4 py-2.5 text-right font-black text-primary">{row.value}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    {onPointExport && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPointExport(row.name);
+                        }}
+                        className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all opacity-0 group-hover/row:opacity-100"
+                      >
+                        <Download size={12} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
   }
 }

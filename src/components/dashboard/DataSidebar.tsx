@@ -17,6 +17,8 @@ export function DataSidebar() {
 
     const hasTriggerFilters = hasFilters && !hasStatusFiltersOnly;
 
+    // Auto-open sidebar effect removed as per user request
+    /*
     useEffect(() => {
         if (hasTriggerFilters) {
             setSidebarOpen(true);
@@ -24,6 +26,7 @@ export function DataSidebar() {
             setSidebarOpen(false);
         }
     }, [hasTriggerFilters, hasFilters, setSidebarOpen]);
+    */
 
     if (!sidebarOpen && !hasFilters) return null;
 

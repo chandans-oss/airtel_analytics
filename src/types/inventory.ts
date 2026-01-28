@@ -21,6 +21,14 @@ export interface NodeData {
   customerCode?: string;
   customerName?: string;
   bandwidth?: number;
+  snmpStatus?: string;
+  pingStatus?: string;
+  utilization?: number;
+  errors?: number;
+  latency?: number;
+  addedDate?: string;
+  deletedDate?: string;
+  probableCause?: string;
 }
 
 export interface LinkData {
@@ -58,6 +66,16 @@ export interface LinkData {
   cost?: number;
   productPlan?: string;
   contractData?: string;
+  siteName?: string;
+  linkId?: string;
+  snmpStatus?: string;
+  pingStatus?: string;
+  utilization?: number;
+  errors?: number;
+  performanceScore?: number;
+  addedDate?: string;
+  deletedDate?: string;
+  probableCause?: string;
 }
 
 export interface EventData {
@@ -91,6 +109,8 @@ export interface RAInventoryData {
   contract: string;
   linkIds?: string;
   cpeIds?: string;
+  createdDate?: string;
+  region?: string;
 }
 
 export interface ConfigCalendarData {
@@ -130,6 +150,8 @@ export interface InventoryStats {
   linkedNodes: number;
   unlinkedNodes: number;
   activeEventsCount: number;
+  totalCustomers: number;
+  totalSites: number;
 }
 
 export interface HierarchyLevel {
@@ -169,7 +191,7 @@ export type DataCategory =
   | 'configFailure'
   | 'configCalendar';
 
-export type ChartType = 'pie' | 'donut' | 'bar' | 'histogram' | 'line' | 'table';
+export type ChartType = 'pie' | 'donut' | 'bar' | 'histogram' | 'line' | 'area' | 'table' | 'scatter' | 'treemap';
 
 export interface WidgetConfig {
   id: string;

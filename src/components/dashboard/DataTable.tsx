@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { 
-  ChevronUp, 
-  ChevronDown, 
-  Download, 
+import {
+  ChevronUp,
+  ChevronDown,
+  Download,
   Search,
   ChevronLeft,
   ChevronRight
@@ -26,9 +26,9 @@ export function DataTable({ type }: DataTableProps) {
   const pageSize = 10;
 
   const data = type === 'nodes' ? getFilteredNodes() : getFilteredLinks();
-  const columns = type === 'nodes' 
-    ? ['deviceName', 'status', 'loopbackIP', 'make', 'model', 'deviceType']
-    : ['customerCode', 'loopbackIP', 'region', 'state', 'serviceFlavor', 'linkStatus'];
+  const columns = type === 'nodes'
+    ? ['deviceName', 'status', 'loopbackIP', 'make', 'model', 'deviceType', 'scanType', 'serviceFlavor']
+    : ['customerCode', 'loopbackIP', 'region', 'state', 'serviceFlavor', 'linkStatus', 'bandwidth'];
 
   const columnLabels: Record<string, string> = {
     deviceName: 'Device Name',
@@ -37,16 +37,18 @@ export function DataTable({ type }: DataTableProps) {
     make: 'Make',
     model: 'Model',
     deviceType: 'Device Type',
+    scanType: 'Scan Type',
     customerCode: 'Customer Code',
     region: 'Region',
     state: 'State',
     serviceFlavor: 'Service Flavor',
     linkStatus: 'Link Status',
+    bandwidth: 'Bandwidth (Mbps)',
   };
 
   const filteredData = useMemo(() => {
     let result = [...data];
-    
+
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter((item) =>
@@ -114,7 +116,7 @@ export function DataTable({ type }: DataTableProps) {
             ({filteredData.length} records)
           </span>
         </h3>
-        
+
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -129,7 +131,7 @@ export function DataTable({ type }: DataTableProps) {
               className="h-8 w-48 rounded-md border border-border bg-muted/50 pl-8 pr-3 text-sm focus:border-primary focus:outline-none"
             />
           </div>
-          
+
           <button
             onClick={exportCSV}
             className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 text-sm text-muted-foreground hover:text-foreground"
@@ -171,7 +173,7 @@ export function DataTable({ type }: DataTableProps) {
                   const value = (item as unknown as Record<string, unknown>)[col];
                   const isStatus = col === 'status' || col === 'linkStatus';
                   const isUp = String(value).toUpperCase() === 'UP';
-                  
+
                   return (
                     <td key={col} className="whitespace-nowrap px-4 py-3 text-sm">
                       {isStatus ? (
@@ -201,7 +203,7 @@ export function DataTable({ type }: DataTableProps) {
         <p className="text-sm text-muted-foreground">
           Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length}
         </p>
-        
+
         <div className="flex items-center gap-1">
           <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
@@ -210,7 +212,7 @@ export function DataTable({ type }: DataTableProps) {
           >
             <ChevronLeft size={16} />
           </button>
-          
+
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
             if (page > totalPages) return null;
@@ -229,7 +231,7 @@ export function DataTable({ type }: DataTableProps) {
               </button>
             );
           })}
-          
+
           <button
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}

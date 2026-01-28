@@ -1,8 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useInventoryStore } from '@/store/inventoryStore';
 import { ChartContainer, UniversalChartRenderer } from './DistributionCharts';
 import { cn } from '@/lib/utils';
-import { RefreshCw } from 'lucide-react';
+import { ExportButton } from '../common/ExportButton';
+import { ChartTypeSelector } from '../common/ChartTypeSelector';
+import { exportToCSV } from '@/utils/exportUtils';
+import type { ChartType } from '@/types/inventory';
+import { Activity, Database, ExternalLink, Settings2, TrendingUp } from 'lucide-react';
 
 interface AnalyticsSetProps {
     title: string;
@@ -14,48 +19,181 @@ interface AnalyticsSetProps {
     }[];
 }
 
-const MAJOR_MAKES = ['CISCO', 'FORTINET', 'HUAWEI'];
+interface HierarchyLevel {
+    label: string;
+    field: string;
+    expectedValues?: string[];
+}
 
 function AnalyticsSet({ title, type, levels }: AnalyticsSetProps) {
-    const { getFilteredNodes, getFilteredLinks, toggleFilter } = useInventoryStore();
+    const { toggleFilter } = useInventoryStore();
+    const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
+    const [widgetSizes, setWidgetSizes] = useState<Record<string, { span: number; height: number }>>({});
 
-    const dataSet = type === 'nodes' ? getFilteredNodes() : getFilteredLinks();
+    useEffect(() => {
+        const initial: Record<string, { span: number; height: number }> = {};
+        levels.forEach((level, index) => {
+            let span = 4;
+            if (index === 0) span = 3;
+            else if (index === 1) span = 5;
+            initial[level.field] = { span, height: 240 };
+        });
+        setWidgetSizes(initial);
+    }, [levels]);
+
+    const handleResize = (field: string, deltaX: number, deltaY: number) => {
+        setWidgetSizes(prev => {
+            const current = prev[field] || { span: 4, height: 240 };
+            const colWidth = 100;
+            const newSpan = Math.max(2, Math.min(12, current.span + Math.round(deltaX / colWidth)));
+            const newHeight = Math.max(160, Math.min(600, current.height + deltaY));
+            return {
+                ...prev,
+                [field]: { span: newSpan, height: newHeight }
+            };
+        });
+    };
 
     return (
-        <div className="space-y-4 rounded-xl border border-border/50 bg-muted/5 p-6">
-            <div className="flex items-center justify-between border-b border-border/50 pb-4">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-foreground/80">
-                    {title} Analytics <span className="text-[10px] text-muted-foreground ml-2 font-medium bg-muted px-2 py-0.5 rounded">Active Data View</span>
-                </h3>
+        <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-3">
+                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <h3 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
+                        {title}
+                    </h3>
+                </div>
+                <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
             </div>
 
-            <div className={cn(
-                "grid grid-cols-1 gap-4 md:grid-cols-3",
-                levels.length === 5 ? "lg:grid-cols-5" :
-                    levels.length === 4 ? "lg:grid-cols-4" :
-                        levels.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-5"
-            )}>
-                {levels.map((level) => (
-                    <AnalyticsWidget
-                        key={level.field}
-                        level={level}
-                        type={type}
-                        onFilter={(val) => toggleFilter(level.field, val, type)}
-                    />
-                ))}
+            <div className="grid grid-cols-12 gap-3">
+                {levels.map((level) => {
+                    const isExpanded = expandedWidget === level.field;
+                    const size = widgetSizes[level.field] || { span: 4, height: 240 };
+
+                    return (
+                        <div
+                            key={level.field}
+                            style={!isExpanded ? { gridColumn: `span ${size.span} / span ${size.span}` } : {}}
+                            className={cn(
+                                "transition-all duration-300 ease-in-out group relative",
+                                isExpanded ? "col-span-12" : "col-span-12"
+                            )}
+                        >
+                            <AnalyticsWidget
+                                level={level}
+                                type={type}
+                                isExpanded={isExpanded}
+                                customHeight={isExpanded ? 400 : size.height}
+                                onToggleExpand={() => setExpandedWidget(isExpanded ? null : level.field)}
+                                onFilter={(val) => toggleFilter(level.field, val, type)}
+                            />
+                            {!isExpanded && (
+                                <ResizeHandles onResize={(dx, dy) => handleResize(level.field, dx, dy)} />
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
-function AnalyticsWidget({ level, type, onFilter }: {
-    level: any;
+function ResizeHandles({ onResize }: { onResize: (dx: number, dy: number) => void }) {
+    const [isResizing, setIsResizing] = useState<string | null>(null);
+    const lastPos = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent, type: 'right' | 'bottom' | 'corner') => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsResizing(type);
+        lastPos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            const dx = isResizing === 'bottom' ? 0 : e.clientX - lastPos.current.x;
+            const dy = isResizing === 'right' ? 0 : e.clientY - lastPos.current.y;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                onResize(dx, dy);
+                lastPos.current = { x: e.clientX, y: e.clientY };
+            }
+        };
+
+        const handleMouseUp = () => setIsResizing(null);
+
+        if (isResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing, onResize]);
+
+    return (
+        <div className="absolute inset-0 pointer-events-none">
+            <div
+                className={cn(
+                    "absolute right-0 top-0 bottom-6 w-2 cursor-ew-resize transition-all z-[30] pointer-events-auto opacity-0 group-hover:opacity-100",
+                    isResizing === 'right' ? "bg-primary/40 opacity-100 w-3" : "hover:bg-primary/20"
+                )}
+                onMouseDown={(e) => handleMouseDown(e, 'right')}
+            />
+            <div
+                className={cn(
+                    "absolute bottom-0 left-0 right-6 h-2 cursor-ns-resize transition-all z-[30] pointer-events-auto opacity-0 group-hover:opacity-100",
+                    isResizing === 'bottom' ? "bg-primary/40 opacity-100 h-3" : "hover:bg-primary/20"
+                )}
+                onMouseDown={(e) => handleMouseDown(e, 'bottom')}
+            />
+            <div
+                className={cn(
+                    "absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize z-[40] pointer-events-auto opacity-0 group-hover:opacity-100 flex items-end justify-end p-2",
+                    isResizing === 'corner' ? "text-primary scale-125" : "text-primary/40"
+                )}
+                onMouseDown={(e) => handleMouseDown(e, 'corner')}
+            >
+                <div className="w-3 h-3 border-r-2 border-b-2 border-current rounded-br-sm" />
+            </div>
+        </div>
+    );
+}
+
+function AnalyticsWidget({ level, type, isExpanded, customHeight, onToggleExpand, onFilter }: {
+    level: HierarchyLevel;
     type: 'nodes' | 'links';
+    isExpanded?: boolean;
+    customHeight?: number;
+    onToggleExpand?: () => void;
     onFilter: (val: string) => void
 }) {
-    const { getFilteredNodesExcluding, getFilteredLinksExcluding, nodeFilters, linkFilters, setSidebarOpen } = useInventoryStore();
+    const { getFilteredNodesExcluding, getFilteredLinksExcluding, nodeFilters, linkFilters, setSelectedModule, toggleFilter } = useInventoryStore();
+    const [chartType, setChartType] = useState<ChartType>('bar');
+    const [customTitle, setCustomTitle] = useState(level.label);
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, name: string } | null>(null);
 
-    // Get data filtered for EVERYTHING except this widget's own field
+    const handleContextMenu = (e: React.MouseEvent, name: string) => {
+        e.preventDefault();
+        const x = e.clientX;
+        const y = e.clientY;
+
+        const menuWidth = 240;
+        const menuHeight = 220;
+        const clampedX = Math.min(x, window.innerWidth - menuWidth - 20);
+        const clampedY = Math.min(y, window.innerHeight - menuHeight - 20);
+
+        setContextMenu({ x: clampedX, y: clampedY, name });
+    };
+
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
     const data = type === 'nodes'
         ? getFilteredNodesExcluding(level.field)
         : getFilteredLinksExcluding(level.field);
@@ -64,8 +202,6 @@ function AnalyticsWidget({ level, type, onFilter }: {
 
     const chartData = useMemo(() => {
         const groups = new Map<string, number>();
-
-        // Initialize expected values with 0
         if (level.expectedValues) {
             level.expectedValues.forEach(v => groups.set(v, 0));
         }
@@ -74,146 +210,193 @@ function AnalyticsWidget({ level, type, onFilter }: {
             let val = item[level.field];
             if (val && String(val).toUpperCase() !== 'UNKNOWN') {
                 let key = String(val);
-
-                // Normalize key against expected values (case-insensitive)
                 if (level.expectedValues) {
                     const upperKey = key.toUpperCase();
                     const match = level.expectedValues.find(v => v.toUpperCase() === upperKey);
-                    if (match) {
-                        key = match;
-                    } else if (level.field === 'make') {
-                        key = 'Others';
-                    }
+                    if (match) key = match;
+                    else if (level.field === 'make') key = 'Others';
                 }
-
-                // Increment if it's a valid key
                 if (!level.expectedValues || groups.has(key)) {
                     groups.set(key, (groups.get(key) || 0) + 1);
                 }
             }
         });
 
+        const statusField = type === 'nodes' ? 'status' : 'linkStatus';
+        const globalFilters = type === 'nodes' ? nodeFilters : linkFilters;
+        const activeStatusFilters = globalFilters[statusField] || [];
+        const hasStatusFilter = activeStatusFilters.length > 0;
+
+        const contextColor = activeStatusFilters.includes('DOWN') ? '#FF3B30' :
+            activeStatusFilters.includes('UP') ? '#34C759' : null;
+
+        const PALETTE = ['#00A58E', '#2196F3', '#FF9800', '#9C27B0', '#E91E63', '#4CAF50', '#00BCD4', '#607D8B'];
+
         return Array.from(groups.entries())
-            .map(([name, value]) => {
-                let color;
+            .map(([name, value], index) => {
+                let barColor = hasStatusFilter ? (contextColor || PALETTE[index % PALETTE.length]) : PALETTE[index % PALETTE.length];
                 if (level.field === 'status' || level.field === 'linkStatus') {
-                    color = name === 'UP' ? 'hsl(160, 84%, 39%)' : 'hsl(12, 85%, 55%)';
+                    barColor = name === 'UP' ? '#34C759' : '#FF3B30';
                 }
+                const isDimensionFiltered = activeValues.length > 0;
+                const isMatch = activeValues.includes(name);
+                const opacity = isDimensionFiltered ? (isMatch ? 1.0 : 0.15) : 1.0;
+                if (isDimensionFiltered && !isMatch) barColor = '#E0E7FF80';
 
-                // Effective highlighting: Gray out non-selected bars
-                const isSelected = activeValues.includes(name);
-                const hasAnySelection = activeValues.length > 0;
-
-                let barColor = color;
-                let opacity = 1;
-
-                if (hasAnySelection) {
-                    if (isSelected) {
-                        opacity = 1;
-                        if (!barColor) barColor = 'hsl(174, 72%, 45%)';
-                    } else {
-                        opacity = 0.15;
-                        barColor = 'hsl(215, 15%, 65%)'; // Neutral Gray
-                    }
-                } else {
-                    if (!barColor) barColor = 'hsl(174, 72%, 45%)';
-                }
-
-                return {
-                    name,
-                    value,
-                    color: barColor,
-                    opacity,
-                    isSelected
-                };
+                return { name, value, color: barColor, opacity, isSelected: isMatch };
             })
             .sort((a, b) => {
                 if (a.name === 'Others') return 1;
                 if (b.name === 'Others') return -1;
                 return b.value - a.value;
             });
-    }, [data, level, activeValues]);
+    }, [data, level, activeValues, nodeFilters, linkFilters, type]);
 
-    const handlePointClick = (val: string) => {
-        onFilter(val);
-        // Only open sidebar for non-status fields
-        if (level.field !== 'status' && level.field !== 'linkStatus') {
-            setSidebarOpen(true);
+    const handlePointClick = (val: string) => onFilter(val);
+
+    const handlePointExport = (name: string) => {
+        const subData = data.filter(item =>
+            String(item[level.field] || '').toUpperCase() === String(name || '').toUpperCase()
+        );
+        if (subData.length > 0) {
+            exportToCSV(subData, `${type}_${level.field}_${name}_export`);
         }
     };
 
     return (
         <div className={cn(
-            "bg-card rounded-lg border shadow-sm overflow-hidden hover:shadow-md transition-all",
-            activeValues.length > 0 ? "border-primary/40 ring-1 ring-primary/20" : "border-border/40"
-        )}>
-            <div className={cn(
-                "px-3 py-2 border-b bg-muted/20 flex justify-between items-center",
-                activeValues.length > 0 ? "border-primary/20" : "border-border/30"
-            )}>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                    {level.label}
-                </span>
-                {activeValues.length > 0 && (
-                    <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                        Filtered
+            "bg-card rounded-xl border border-border/60 transition-all duration-500 shadow-sm overflow-hidden flex flex-col",
+            isExpanded ? "h-[400px] shadow-2xl z-20" : "shadow-sm hover:shadow-md",
+            activeValues.length > 0 ? "border-primary/60 ring-1 ring-primary/5" : ""
+        )} style={{ height: isExpanded ? 400 : (customHeight || 240) }}>
+            <div className="px-3 py-1.5 flex justify-between items-center border-b border-border/40 bg-muted/10">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/70">
+                        {customTitle}
                     </span>
-                )}
+                    {activeValues.length > 0 && <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
+                </div>
+                <div className="flex items-center gap-1.5 scale-90">
+                    <button
+                        onClick={onToggleExpand}
+                        className="p-1 px-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all flex items-center gap-1"
+                        title={isExpanded ? "Collapse" : "Expand Size"}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            {isExpanded ? <path d="M8 3v5H3M16 3v5h5M16 21v-5h5M8 21v-5H3" /> : <path d="m15 15 6 6m-6-1.5 6.5.5V14M9 9 3 3M9 10.5 2.5 10V14m6-5L2 2" />}
+                        </svg>
+                    </button>
+                    <ChartTypeSelector
+                        data={chartData}
+                        currentType={chartType}
+                        onTypeChange={setChartType}
+                        title={customTitle}
+                        onTitleChange={setCustomTitle}
+                        variant="mini"
+                    />
+                    <ExportButton
+                        data={chartData}
+                        title={`${customTitle} Analytics (${type})`}
+                        filename={`${type}_${level.field}_export`}
+                    />
+                </div>
             </div>
-            <div className="p-1 h-[200px] flex items-center justify-center">
+            <div className="flex-1 p-1 relative overflow-hidden flex items-center justify-center">
                 <UniversalChartRenderer
                     data={chartData}
-                    chartType="bar"
-                    variant="mini"
+                    chartType={chartType}
+                    variant={isExpanded ? 'default' : 'mini'}
                     onPointClick={handlePointClick}
+                    onPointExport={handlePointExport}
+                    onContextMenu={handleContextMenu}
                 />
             </div>
+            {contextMenu && createPortal(
+                <div
+                    className="fixed z-[9999] w-60 bg-background/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden py-1.5 animate-in fade-in zoom-in-90 duration-200"
+                    style={{ left: contextMenu.x, top: contextMenu.y }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="px-4 py-2 border-b border-border/50 bg-primary/5 mb-1.5">
+                        <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                            <Settings2 size={10} />
+                            Quick Actions
+                        </p>
+                        <p className="text-xs font-bold text-foreground truncate mt-0.5">{contextMenu.name}</p>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            if (!activeValues.includes(contextMenu.name)) {
+                                toggleFilter(level.field, contextMenu.name, type);
+                            }
+                            setSelectedModule('filteredEvents');
+                            setContextMenu(null);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-3 group"
+                    >
+                        <Activity size={14} className="text-primary group-hover:text-primary-foreground shadow-sm" />
+                        <div>
+                            <p className="font-bold">Event Analysis</p>
+                            <p className="text-[9px] opacity-70">RCA & Alarms</p>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (!activeValues.includes(contextMenu.name)) {
+                                toggleFilter(level.field, contextMenu.name, type);
+                            }
+                            setSelectedModule('filteredConfig');
+                            setContextMenu(null);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-blue-500 hover:text-white transition-all flex items-center gap-3 group"
+                    >
+                        <Database size={14} className="text-blue-500 group-hover:text-white" />
+                        <div>
+                            <p className="font-bold">Config Issues</p>
+                            <p className="text-[9px] opacity-70">Downloads & Compliance</p>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            handlePointClick(contextMenu.name);
+                            setContextMenu(null);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-3 group"
+                    >
+                        <ExternalLink size={14} className="text-emerald-500 group-hover:text-white" />
+                        <div>
+                            <p className="font-bold">Toggle Filter</p>
+                            <p className="text-[9px] opacity-70">Apply/Remove Segment</p>
+                        </div>
+                    </button>
+
+                    <div className="border-t border-border/50 mt-1.5 pt-1.5">
+                        <button className="w-full text-left px-4 py-2 text-xs hover:bg-muted text-muted-foreground flex items-center gap-3 group transition-colors">
+                            <TrendingUp size={14} className="opacity-50 group-hover:opacity-100" />
+                            <span>Correlate Trends</span>
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
 
 export function InterdependentAnalytics() {
-    const { clearFilters } = useInventoryStore();
-    const nodeLevels = [
-        { label: 'Status', field: 'status', expectedValues: ['UP', 'DOWN'] },
-        { label: 'Make', field: 'make', expectedValues: ['Cisco', 'Fortinet', 'Huawei', 'Others'] },
-        { label: 'Scan Type', field: 'scanType', expectedValues: ['SNMP', 'ICMP'] },
-    ];
-
-    const linkLevels = [
-        { label: 'Link Status', field: 'linkStatus', expectedValues: ['UP', 'DOWN'] },
-        { label: 'Flavor', field: 'serviceFlavor', expectedValues: ['Fully Managed', 'Partially Managed'] },
-        { label: 'Make', field: 'make', expectedValues: ['Cisco', 'Fortinet', 'Huawei', 'Others'] },
-        { label: 'Region', field: 'region', expectedValues: ['North', 'South', 'East', 'West'] },
-        { label: 'Scan Type', field: 'scanType', expectedValues: ['SNMP', 'ICMP'] },
-    ];
+    const { nodeHierarchyLevels, linkHierarchyLevels } = useInventoryStore();
 
     return (
-        <div className="space-y-10 py-6 border-t border-border/50 mt-12">
-            <div className="flex flex-col items-center gap-4 text-center">
-                <div className="space-y-2">
-                    <h2 className="text-2xl font-black uppercase tracking-widest">Interdependent Business Intelligence</h2>
-                </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => clearFilters('nodes')}
-                        className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 transition-all"
-                    >
-                        <RefreshCw size={12} />
-                        Reset Nodes
-                    </button>
-                    <button
-                        onClick={() => clearFilters('links')}
-                        className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 transition-all"
-                    >
-                        <RefreshCw size={12} />
-                        Reset Links
-                    </button>
-                </div>
+        <div className="flex flex-col gap-6 pt-0">
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} />
             </div>
-
-            <AnalyticsSet title="Node Inventory" type="nodes" levels={nodeLevels} />
-            <AnalyticsSet title="Link Inventory" type="links" levels={linkLevels} />
+            <div className="animate-in fade-in slide-in-from-top-4 duration-700">
+                <AnalyticsSet title="Node Inventory Analytics" type="nodes" levels={nodeHierarchyLevels} />
+            </div>
         </div>
     );
 }

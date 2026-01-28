@@ -26,23 +26,6 @@ export function PerformanceDashboard() {
             .slice(0, 10);
     }, [links]);
 
-    // Bandwidth Distribution
-    const bandwidthDistribution = useMemo(() => {
-        const ranges = [
-            { name: '< 10M', count: 0 },
-            { name: '10M-50M', count: 0 },
-            { name: '50M-100M', count: 0 },
-            { name: '100M+', count: 0 },
-        ];
-        links.forEach(l => {
-            const bw = l.bandwidth || 0;
-            if (bw < 10240) ranges[0].count++;
-            else if (bw < 51200) ranges[1].count++;
-            else if (bw < 102400) ranges[2].count++;
-            else ranges[3].count++;
-        });
-        return ranges.map(r => ({ name: r.name, value: r.count }));
-    }, [links]);
 
     // Regional Latency (Modeling)
     const regionalPerformance = useMemo(() => {
@@ -158,12 +141,12 @@ export function PerformanceDashboard() {
                 </div>
 
                 {/* Regional Health Matrix */}
-                <div className="col-span-12 lg:col-span-6">
+                <div className="col-span-12">
                     <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm h-full">
                         <h3 className="mb-6 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                             Regional Latency Heatmap (ms)
                         </h3>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                             {regionalPerformance.map((rp) => (
                                 <div key={rp.name} className="p-4 rounded-xl border border-border/50 bg-muted/20 flex flex-col gap-2">
                                     <div className="flex items-center justify-between">
@@ -178,36 +161,6 @@ export function PerformanceDashboard() {
                                         <span>Jitter: {rp.jitter.toFixed(1)}ms</span>
                                         <span>Loss: {rp.packetLoss.toFixed(2)}%</span>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bandwidth Tiers */}
-                <div className="col-span-12 lg:col-span-6">
-                    <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm h-full">
-                        <h3 className="mb-6 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                            Bandwidth Tier Distribution
-                        </h3>
-                        <div className="h-[250px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={bandwidthDistribution}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                    <YAxis hide />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
-                                    />
-                                    <Area type="stepBefore" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={4} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mt-4 flex gap-4 overflow-hidden">
-                            {bandwidthDistribution.map(tier => (
-                                <div key={tier.name} className="flex-1 text-center">
-                                    <div className="text-xs font-black text-foreground">{tier.value}</div>
-                                    <div className="text-[9px] font-bold uppercase text-muted-foreground">{tier.name}</div>
                                 </div>
                             ))}
                         </div>

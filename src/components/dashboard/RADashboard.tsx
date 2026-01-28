@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react';
 import { useInventoryStore } from '@/store/inventoryStore';
 import {
     FileText,
-    Link2,
-    User,
-    Activity,
+    TrendingUp,
+    Users,
+    Zap,
     Search,
     Download,
     Package,
-    ShieldCheck
+    ShieldCheck,
+    LayoutDashboard,
+    MoreVertical,
+    Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -16,245 +19,469 @@ import {
     PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 
+const COLORS = {
+    primary: 'hsl(var(--primary))',
+    secondary: 'hsl(var(--secondary))',
+    accent: 'hsl(var(--accent))',
+    emerald: '#10b981',
+    blue: '#3b82f6',
+    orange: '#f59e0b',
+    rose: '#f43f5e',
+    violet: '#8b5cf6',
+};
+
 const STATUS_COLORS: Record<string, string> = {
-    'Active': 'hsl(160, 84%, 39%)',
-    'Inactive': 'hsl(0, 0%, 40%)',
-    'Pending': 'hsl(38, 92%, 50%)',
-    'Cancelled': 'hsl(12, 85%, 55%)',
+    'Active': COLORS.emerald,
+    'LIVE': COLORS.emerald,
+    'Pending': COLORS.orange,
+    'NEW': COLORS.blue,
+    'Cancelled': COLORS.rose,
+    'Decommissioned': 'hsl(var(--muted-foreground))',
+};
+
+// Helper to parse bandwidth string like "10 Mbps" or "2 Gbps" to numeric Kbps
+const parseBwToKbps = (bwStr: string): number => {
+    if (!bwStr) return 0;
+    const cleaned = bwStr.toLowerCase().replace(/[^0-9.a-z]/g, '');
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return 0;
+
+    if (cleaned.includes('gbps')) return num * 1024 * 1024;
+    if (cleaned.includes('mbps')) return num * 1024;
+    if (cleaned.includes('kbps')) return num;
+    return num; // assume kbps if no unit
 };
 
 export function RADashboard() {
     const { raInventory } = useInventoryStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<'overview' | 'customers'>('overview');
 
-    // RA Stats
+    // --- DATA PROCESSING ---
+
+    // 1. KPI Stats
     const stats = useMemo(() => {
-        const counts = {
-            TOTAL: raInventory.length,
-            ACTIVE: raInventory.filter(ra => ra.status === 'Active').length,
-            PENDING: raInventory.filter(ra => ra.status === 'Pending').length,
-            CUSTOMERS: new Set(raInventory.map(ra => ra.customerCode)).size
+        const total = raInventory.length;
+        const active = raInventory.filter(ra =>
+            ['Active', 'LIVE', 'UP'].includes(ra.status || '')
+        ).length;
+        const pending = raInventory.filter(ra =>
+            ['Pending', 'IN PROGRESS', 'NEW'].includes(ra.status || '')
+        ).length;
+        const uniqueCustomers = new Set(raInventory.map(ra => ra.customerCode)).size;
+
+        return {
+            total,
+            active,
+            activePercent: total > 0 ? Math.round((active / total) * 100) : 0,
+            pending,
+            customers: uniqueCustomers
         };
-        return counts;
     }, [raInventory]);
 
-    // Product Distribution
-    const productData = useMemo(() => {
-        const counts: Record<string, number> = {};
-        raInventory.forEach(ra => {
-            const prod = ra.product || 'Others';
-            counts[prod] = (counts[prod] || 0) + 1;
-        });
-        return Object.entries(counts)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-    }, [raInventory]);
 
-    // Status Data
+    // 3. Status Split
     const statusData = useMemo(() => {
         const counts: Record<string, number> = {};
         raInventory.forEach(ra => {
-            const status = ra.status || 'Unknown';
-            counts[status] = (counts[status] || 0) + 1;
+            const s = ra.status || 'Others';
+            counts[s] = (counts[s] || 0) + 1;
         });
         return Object.entries(counts).map(([name, value]) => ({
             name,
             value,
-            color: STATUS_COLORS[name] || 'hsl(var(--muted))'
-        }));
+            color: STATUS_COLORS[name] || `hsl(${Math.random() * 360}, 70%, 50%)`
+        })).sort((a, b) => b.value - a.value);
     }, [raInventory]);
 
-    // Filtered RAs
+    // 4. Top Customers by Allocation
+    const customerAllocation = useMemo(() => {
+        const custData: Record<string, { count: number, bw: number }> = {};
+        raInventory.forEach(ra => {
+            const name = ra.customerName || ra.customerCode || 'Unknown';
+            if (!custData[name]) custData[name] = { count: 0, bw: 0 };
+            custData[name].count++;
+            custData[name].bw += parseBwToKbps(ra.bandwidth);
+        });
+
+        return Object.entries(custData)
+            .map(([name, data]) => ({
+                name,
+                count: data.count,
+                bandwidth: Math.round(data.bw / 1024) // Convert back to Mbps for chart
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+    }, [raInventory]);
+
+    // 5. Product Distribution
+    const productData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        raInventory.forEach(ra => {
+            const p = ra.product || 'Others';
+            counts[p] = (counts[p] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [raInventory]);
+
+    // 6. Regional Distribution
+    const regionData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        raInventory.forEach(ra => {
+            const r = ra.region || 'Unassigned';
+            counts[r] = (counts[r] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [raInventory]);
+
+
+    // 8. Filtered List
     const filteredRAs = useMemo(() => {
+        const q = searchTerm.toLowerCase();
         return raInventory.filter(ra =>
-            ra.raNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ra.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ra.product.toLowerCase().includes(searchTerm.toLowerCase())
+            ra.raNumber.toLowerCase().includes(q) ||
+            ra.customerName.toLowerCase().includes(q) ||
+            ra.customerCode.toLowerCase().includes(q) ||
+            ra.product.toLowerCase().includes(q) ||
+            (ra.region || '').toLowerCase().includes(q)
         );
     }, [raInventory, searchTerm]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 animate-in fade-in duration-700">
+            {/* --- HEADER --- */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <div>
-                    <h1 className="text-2xl font-black uppercase tracking-widest text-foreground">
-                        RA Inventory Analytics
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Revenue Assurance and Resource Allocation tracking.
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                            <LayoutDashboard size={18} />
+                        </div>
+                        <h1 className="text-lg font-black uppercase tracking-tight text-foreground">
+                            RA Inventory <span className="text-primary/60">Intelligence</span>
+                        </h1>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-medium">
+                        Comprehensive analysis of Revenue Assurance and customer resource allocation.
                     </p>
                 </div>
-                <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-lg hover:bg-primary/90 transition-all">
-                    <Download size={14} />
-                    Export RA Data
-                </button>
+
             </div>
 
-            {/* Top KPIs */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total RA Records</span>
-                            <div className="text-3xl font-black">{stats.TOTAL}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                    { label: 'Total RA Records', value: stats.total, icon: FileText, color: COLORS.blue, sub: 'Network-wide' },
+                    { label: 'Active Allocation', value: stats.active, icon: ShieldCheck, color: COLORS.emerald, sub: `${stats.activePercent}% of total` },
+                    { label: 'Total Customers', value: stats.customers, icon: Users, color: COLORS.violet, sub: 'Unique Enterprise codes' },
+                ].map((kpi, i) => (
+                    <div key={i} className="group relative rounded-xl border border-border/50 bg-card/50 p-3 shadow-sm hover:shadow-md transition-all hover:border-primary/20 overflow-hidden">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{kpi.label}</span>
+                            <div className="p-1.5 rounded-md bg-muted group-hover:bg-primary/10 transition-colors" style={{ color: kpi.color }}>
+                                <kpi.icon size={14} />
+                            </div>
                         </div>
-                        <div className="rounded-lg bg-primary/10 p-2 text-primary">
-                            <FileText size={20} />
-                        </div>
-                    </div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active RAs</span>
-                            <div className="text-3xl font-black text-emerald-500">{stats.ACTIVE}</div>
-                        </div>
-                        <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-500">
-                            <ShieldCheck size={20} />
+                        <div className="text-xl font-black tracking-tight">{kpi.value}</div>
+                        <div className="mt-0.5 text-[8px] font-medium text-muted-foreground opacity-80">{kpi.sub}</div>
+                        <div className="absolute -right-1 -bottom-1 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
+                            <kpi.icon size={50} strokeWidth={3} />
                         </div>
                     </div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unique Customers</span>
-                            <div className="text-3xl font-black text-blue-500">{stats.CUSTOMERS}</div>
-                        </div>
-                        <div className="rounded-lg bg-blue-500/10 p-2 text-blue-500">
-                            <User size={20} />
-                        </div>
-                    </div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Pending RAs</span>
-                            <div className="text-3xl font-black text-orange-500">{stats.PENDING}</div>
-                        </div>
-                        <div className="rounded-lg bg-orange-500/10 p-2 text-orange-500">
-                            <Activity size={20} />
-                        </div>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="grid grid-cols-12 gap-6">
-                {/* Charts */}
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                    <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
-                        <h3 className="mb-6 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                            Product Breakdown
-                        </h3>
-                        <div className="h-[250px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={productData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                                    <XAxis dataKey="name" tick={{ fontSize: 9 }} hide />
-                                    <YAxis tick={{ fontSize: 9 }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+            {/* --- INSIGHTS TABS --- */}
+            <div className="space-y-6">
+                <div className="flex items-center gap-1 p-0.5 bg-muted/50 rounded-lg w-fit border border-border/50">
+                    {(['overview', 'customers'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                "px-4 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all",
+                                activeTab === tab
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-background/80"
+                            )}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+
+                {activeTab === 'overview' && (
+                    <div className="grid grid-cols-12 gap-6 animate-in slide-in-from-bottom-4 duration-500">
+                        {/* Primary Charts */}
+                        <div className="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm flex flex-col h-[280px]">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <Package size={14} className="text-primary" />
+                                        Product Distribution
+                                    </h3>
+                                    <button className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                        <Download size={12} />
+                                    </button>
+                                </div>
+                                <div className="flex-1 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={productData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis
+                                                dataKey="name"
+                                                type="category"
+                                                width={100}
+                                                tick={{ fontSize: 9, fontWeight: '700', fill: 'hsl(var(--foreground))' }}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'hsl(var(--primary)/5%)' }}
+                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }}
+                                            />
+                                            <Bar dataKey="value" fill={COLORS.primary} radius={[0, 4, 4, 0]} barSize={24}>
+                                                {productData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fillOpacity={1 - (index * 0.1)} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Regional Breakdown */}
+                            <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm flex flex-col h-[280px]">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <Map size={14} className="text-blue-500" />
+                                        Regional Footprint
+                                    </h3>
+                                    <button className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                        <Download size={12} />
+                                    </button>
+                                </div>
+                                <div className="flex-1 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={regionData}
+                                                cx="50%" cy="50%"
+                                                innerRadius={65}
+                                                outerRadius={90}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {regionData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={[COLORS.blue, COLORS.emerald, COLORS.violet, COLORS.orange][index % 4]} stroke="none" />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-3 mt-4">
+                                    {regionData.map((r, i) => (
+                                        <div key={r.name} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
+                                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: [COLORS.blue, COLORS.emerald, COLORS.violet, COLORS.orange][i % 4] }} />
+                                            <span className="text-[9px] font-bold uppercase">{r.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Secondary Stats / Health */}
+                        <div className="col-span-12 lg:col-span-4 space-y-6">
+                            {/* Status Gauge */}
+                            <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm h-full flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest mb-4">Allocation Efficiency</h3>
+                                <div className="space-y-4 flex-1">
+                                    {statusData.map((s, i) => (
+                                        <div key={s.name} className="space-y-2">
+                                            <div className="flex justify-between items-center text-[10px] font-bold">
+                                                <span className="uppercase text-muted-foreground">{s.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-foreground">{s.value}</span>
+                                                    <span className="px-1.5 py-0.5 rounded bg-muted text-[8px] opacity-70">
+                                                        {Math.round((s.value / stats.total) * 100)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="h-2 w-full bg-muted/40 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-1000"
+                                                    style={{
+                                                        width: `${(s.value / stats.total) * 100}%`,
+                                                        backgroundColor: s.color,
+                                                        boxShadow: `0 0 10px ${s.color}40`
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'customers' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in zoom-in-95 duration-500">
+                        {/* Top Customers by Count */}
+                        <div className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm h-[400px]">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                    <Users size={16} className="text-primary" />
+                                    Top Clients by Volume
+                                </h3>
+                                <button className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                    <Download size={14} />
+                                </button>
+                            </div>
+                            <ResponsiveContainer width="100%" height="90%">
+                                <BarChart data={customerAllocation} layout="vertical">
+                                    <CartesianGrid strokeDasharray="2 2" horizontal={false} opacity={0.3} />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={120}
+                                        tick={{ fontSize: 8, fontWeight: '700' }}
+                                        axisLine={false}
+                                        tickLine={false}
                                     />
-                                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                    <Tooltip
+                                        cursor={{ fill: 'hsl(var(--primary)/2%)' }}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }}
+                                    />
+                                    <Bar dataKey="count" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* Top Customers by BW */}
+                        <div className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm h-[400px]">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                    <TrendingUp size={16} className="text-emerald-500" />
+                                    Top Clients by Bandwidth Allocation
+                                </h3>
+                                <button className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                    <Download size={14} />
+                                </button>
+                            </div>
+                            <ResponsiveContainer width="100%" height="90%">
+                                <BarChart data={customerAllocation} layout="vertical">
+                                    <CartesianGrid strokeDasharray="2 2" horizontal={false} opacity={0.3} />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={120}
+                                        tick={{ fontSize: 8, fontWeight: '700' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'hsl(var(--primary)/2%)' }}
+                                        formatter={(val) => [`${val} Mbps`, 'Bandwidth']}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }}
+                                    />
+                                    <Bar dataKey="bandwidth" fill={COLORS.emerald} radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
+                )}
 
-                    <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
-                        <h3 className="mb-6 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                            RA Status
-                        </h3>
-                        <div className="h-[250px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={statusData}
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {statusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mt-4 flex flex-wrap justify-center gap-4 text-[10px] font-bold uppercase tracking-wider">
-                            {statusData.map(s => (
-                                <div key={s.name} className="flex items-center gap-1.5">
-                                    <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                                    <span className="text-muted-foreground">{s.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+            </div>
+
+            {/* --- DETAILED DATA TABLE --- */}
+            <div className="rounded-2xl border border-border/50 bg-card shadow-lg overflow-hidden flex flex-col">
+                <div className="px-6 py-4 border-b border-border/50 bg-muted/20 flex items-center justify-between">
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
+                        <FileText size={14} className="text-primary" />
+                        Master RA Ledger
+                    </h3>
+                    <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-widest">
+                        {filteredRAs.length} Items found
+                    </span>
                 </div>
 
-                {/* RA List */}
-                <div className="col-span-12 lg:col-span-8">
-                    <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden flex flex-col h-full text-[10px]">
-                        <div className="border-b border-border/50 bg-muted/30 p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Search size={14} className="text-muted-foreground" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by RA#, Customer, or Product..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-transparent border-none focus:outline-none w-64 p-1 rounded hover:bg-muted/50 transition-all font-medium"
-                                />
-                            </div>
-                            <span className="text-[10px] font-bold text-muted-foreground">
-                                {filteredRAs.length} RA RECORDS LOADED
-                            </span>
-                        </div>
-                        <div className="overflow-auto max-h-[600px]">
-                            <table className="w-full text-left">
-                                <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-md font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50">
-                                    <tr>
-                                        <th className="px-4 py-3">RA Number</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Customer Code</th>
-                                        <th className="px-4 py-3">Customer Name</th>
-                                        <th className="px-4 py-3">Product</th>
-                                        <th className="px-4 py-3 text-right">RA Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/20">
-                                    {filteredRAs.map((ra, idx) => (
-                                        <tr key={idx} className="hover:bg-muted/30 transition-colors group">
-                                            <td className="px-4 py-3 font-bold text-primary">{ra.raNumber}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded-full text-[9px] font-bold",
-                                                    ra.status === 'Active' ? "bg-emerald-500/10 text-emerald-500" :
-                                                        ra.status === 'Pending' ? "bg-orange-500/10 text-orange-500" :
-                                                            "bg-muted text-muted-foreground"
-                                                )}>
-                                                    {ra.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">{ra.customerCode}</td>
-                                            <td className="px-4 py-3 font-medium truncate max-w-[120px]">{ra.customerName}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Package size={10} className="text-muted-foreground" />
-                                                    {ra.product}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-muted-foreground">{ra.type}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div className="overflow-auto max-h-[600px] custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-md border-b border-border/50">
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">
+                                <th className="px-6 py-4">RA Reference</th>
+                                <th className="px-6 py-4">Health Status</th>
+                                <th className="px-6 py-4">Type</th>
+                                <th className="px-6 py-4">Client Portfolio</th>
+                                <th className="px-6 py-4">Region</th>
+                                <th className="px-6 py-4">Allocation</th>
+                                <th className="px-6 py-4 text-right">Contract</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/10">
+                            {filteredRAs.map((ra, idx) => (
+                                <tr key={idx} className="group hover:bg-primary/[0.03] transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-black text-primary group-hover:underline cursor-pointer tracking-wide">{ra.raNumber}</span>
+                                            <span className="text-[9px] text-muted-foreground opacity-60 font-medium">{ra.linkIds || 'LSI Not Linked'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className="h-1.5 w-1.5 rounded-full"
+                                                style={{ backgroundColor: STATUS_COLORS[ra.status] || COLORS.blue }}
+                                            />
+                                            <span className={cn(
+                                                "text-[10px] font-black uppercase tracking-tight",
+                                                ra.status === 'Active' ? "text-emerald-500" :
+                                                    ra.status === 'Pending' ? "text-orange-500" : "text-muted-foreground"
+                                            )}>
+                                                {ra.status}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-muted/40 w-fit">
+                                            <TrendingUp size={10} className="text-muted-foreground" />
+                                            <span className="text-[9px] font-bold uppercase text-foreground/70">{ra.type}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-bold text-foreground/90 leading-tight">{ra.customerName}</span>
+                                            <span className="text-[9px] font-black text-muted-foreground/60">{ra.customerCode}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{ra.region || '—'}</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-1.5">
+                                                <Zap size={10} className="text-primary/60" />
+                                                <span className="text-[10px] font-black text-foreground">{ra.bandwidth}</span>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-muted-foreground/60 truncate max-w-[100px]">{ra.product}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <span className="text-[10px] font-bold text-muted-foreground italic">{ra.contract || 'O.O.C'}</span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

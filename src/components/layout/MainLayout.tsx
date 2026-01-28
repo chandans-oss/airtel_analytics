@@ -1,7 +1,13 @@
 import { ReactNode, useState } from 'react';
 import { AppSidebar } from './AppSidebar';
-import { Bell, User, Search } from 'lucide-react';
+import { ToolSidebar } from './ToolSidebar';
+import { Bell, User, Search, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
+import { useInventoryStore } from '@/store/inventoryStore';
+import { cn } from '@/lib/utils';
+
+import { HeaderKPIs } from '../dashboard/HeaderKPIs';
+import { InventorySidebar } from './InventorySidebar';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -9,6 +15,15 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const {
+    toolSidebarOpen,
+    setToolSidebarOpen,
+    inventorySidebarOpen,
+    setInventorySidebarOpen,
+    selectedModule
+  } = useInventoryStore();
+
+  const isToolModule = ['inventory', 'events', 'config'].includes(selectedModule);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -17,18 +32,35 @@ export function MainLayout({ children }: MainLayoutProps) {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <ToolSidebar />
+      <InventorySidebar />
+
+      <div className="flex flex-1 flex-col overflow-auto bg-background/50">
         {/* Top Header */}
-        <header className="flex h-14 items-center justify-between border-b border-border bg-card/50 px-6">
+        <header className="flex h-14 items-center justify-between border-b border-border bg-card/50 px-6 shrink-0 z-30 relative">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search nodes, links, events..."
-                className="h-9 w-80 rounded-lg border border-border bg-muted/50 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
+            {isToolModule && !toolSidebarOpen && (
+              <button
+                onClick={() => setToolSidebarOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all shadow-sm group"
+                title="Configuration & Filters"
+              >
+                <SlidersHorizontal size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+              </button>
+            )}
+
+            {selectedModule === 'inventory' && !inventorySidebarOpen && (
+              <button
+                onClick={() => setInventorySidebarOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all shadow-sm group"
+                title="Inventory Dashboards"
+              >
+                <LayoutDashboard size={14} className="group-hover:scale-110 transition-transform" />
+              </button>
+            )}
+
+            {/* KPI Header Stats (Replacing Search) */}
+            <HeaderKPIs />
           </div>
 
           <div className="flex items-center gap-3">
@@ -47,7 +79,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 p-6">
           {children}
         </main>
       </div>

@@ -59,10 +59,10 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         </div>
         {!collapsed && (
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-tight text-muted-foreground/80 truncate">
+            <span className="text-xs font-semibold uppercase tracking-tight text-muted-foreground/80 truncate font-display">
               Airtel Analytics
             </span>
-            <span className="text-[10px] font-medium text-primary/70 leading-none">
+            <span className="text-[10px] font-medium text-primary/70 leading-none font-display">
               by INFRAON
             </span>
           </div>

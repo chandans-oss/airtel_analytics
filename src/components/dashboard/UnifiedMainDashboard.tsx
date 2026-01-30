@@ -91,7 +91,8 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 statusColor.bg,
                 statusColor.border,
                 statusColor.hover,
-                onClick && "cursor-pointer hover:shadow-lg"
+                onClick && "cursor-pointer hover:shadow-lg",
+                showMenu && "z-50 ring-2 ring-primary/20 shadow-2xl scale-[1.02]"
             )}
         >
 
@@ -138,25 +139,24 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                     {showMenu && (
                         <div
                             ref={menuRef}
-                            className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in zoom-in-95 duration-200"
+                            className="absolute bottom-full mb-8 left-1/2 -translate-x-1/2 z-[9999] animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onIssuesClick?.();
                                 setShowMenu(false);
                             }}
                         >
-                            <div className="bg-popover border border-border shadow-2xl rounded-xl p-1 min-w-[160px]">
-                                <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-500 hover:text-white text-foreground transition-all group/item">
-                                    <div className="p-1.5 rounded-md bg-rose-500/10 group-hover/item:bg-white/20">
-                                        <AlertTriangle size={14} className="text-rose-500 group-hover/item:text-white" />
+                            <div className="bg-rose-600 border border-white/30 shadow-[0_20px_50px_rgba(225,29,72,0.6)] rounded-xl p-1.5 min-w-[180px]">
+                                <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/10 text-white transition-all group/item cursor-pointer">
+                                    <div className="p-2 rounded-lg bg-white/20">
+                                        <AlertTriangle size={18} className="text-white animate-pulse" />
                                     </div>
                                     <div className="flex flex-col items-start text-left">
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Analyze {downLabel}</span>
-                                        <span className="text-[8px] opacity-70 font-bold uppercase tracking-tighter">View detailed records</span>
+                                        <span className="text-[11px] font-black uppercase tracking-widest leading-none">Analyze {downLabel}</span>
+                                        <span className="text-[9px] opacity-80 font-bold uppercase tracking-tighter mt-1">View detailed records</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 bg-popover border-b border-r border-border rotate-45 -mt-1.5" />
                         </div>
                     )}
 

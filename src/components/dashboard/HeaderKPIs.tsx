@@ -96,40 +96,30 @@ export function HeaderKPIs() {
             <div className="h-6 w-px bg-border/50 hidden sm:block" />
 
             {/* Total Customers */}
-            <div className="flex items-center gap-2.5 group">
-                <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500 cursor-pointer hover:bg-orange-500/20 transition-colors"
-                    title="Total Unique Customers"
-                >
-                    <Users size={16} />
+            <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 shadow-sm border border-orange-500/10">
+                    <Users size={18} />
                 </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-muted-foreground/70">Customers</span>
-                    <div className="flex items-center gap-1.5 h-5">
-                        <span className="text-lg font-black text-foreground">
-                            {stats.totalCustomers}
-                        </span>
-                    </div>
+                <div className="flex flex-col justify-center">
+                    <span className="text-[10px] uppercase font-black tracking-[0.1em] text-muted-foreground/60 leading-none mb-1">Customers</span>
+                    <span className="text-2xl font-black text-foreground leading-none tracking-tighter">
+                        {stats.totalCustomers}
+                    </span>
                 </div>
             </div>
 
-            <div className="h-6 w-px bg-border/50 hidden sm:block" />
+            <div className="h-10 w-px bg-border/40 mx-2 hidden sm:block" />
 
             {/* Total Sites */}
-            <div className="flex items-center gap-2.5 group">
-                <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 cursor-pointer hover:bg-emerald-500/20 transition-colors"
-                    title="Total Unique Sites"
-                >
-                    <MapPin size={16} />
+            <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 shadow-sm border border-emerald-500/10">
+                    <MapPin size={18} />
                 </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-muted-foreground/70">Sites</span>
-                    <div className="flex items-center gap-1.5 h-5">
-                        <span className="text-lg font-black text-foreground">
-                            {stats.totalSites}
-                        </span>
-                    </div>
+                <div className="flex flex-col justify-center">
+                    <span className="text-[10px] uppercase font-black tracking-[0.1em] text-muted-foreground/60 leading-none mb-1">Sites</span>
+                    <span className="text-2xl font-black text-foreground leading-none tracking-tighter">
+                        {stats.totalSites}
+                    </span>
                 </div>
             </div>
         </div>

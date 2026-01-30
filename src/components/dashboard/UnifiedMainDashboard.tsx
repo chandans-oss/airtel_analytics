@@ -118,11 +118,11 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                         }
                     }}
                 >
-                    {/* Local Hover Tooltip */}
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover/down:opacity-100 transition-all duration-300 pointer-events-none z-30">
-                        <div className="bg-rose-500 text-[9px] font-black text-white px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xl border border-white/20 flex items-center gap-1.5 animate-in slide-in-from-bottom-1">
-                            <AlertTriangle size={10} />
-                            Review {issueCount} {downLabel} Reasons
+                    {/* Centered Hover Prompt */}
+                    <div className="absolute bottom-[40px] left-1/2 -translate-x-1/2 opacity-0 group-hover/down:opacity-100 transition-all duration-300 z-30">
+                        <div className="bg-rose-600 text-[11px] font-black text-white px-5 py-2.5 rounded-xl whitespace-nowrap shadow-[0_10px_30px_rgba(225,29,72,0.4)] border border-white/20 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+                            <AlertTriangle size={14} className="animate-pulse" />
+                            Analyze {issueCount} {downLabel} Dataset
                         </div>
                     </div>
 

@@ -42,6 +42,10 @@ interface KPIProps {
 }
 
 function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick }: KPIProps) {
+    const isConfig = title.toLowerCase().includes('config');
+    const upLabel = isConfig ? 'SUCCESS' : 'UP';
+    const downLabel = isConfig ? 'FAILURE' : 'DOWN';
+
     const statusColor = useMemo(() => {
         if (issueCount === 0) return {
             bg: 'bg-emerald-500/5',
@@ -67,16 +71,37 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
         <div
             onClick={onClick}
             className={cn(
-                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md",
+                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md overflow-hidden",
                 statusColor.bg,
                 statusColor.border,
                 statusColor.hover,
                 onClick && "cursor-pointer hover:shadow-lg"
             )}
         >
+            {/* Hover Tooltip/Overlay */}
+            <div
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center z-20"
+                onClick={(e) => {
+                    if (issueCount > 0) {
+                        e.stopPropagation();
+                        onIssuesClick?.();
+                    }
+                }}
+            >
+                <div className="p-2 rounded-full bg-primary/10 text-primary mb-2">
+                    <Search size={20} />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                    {issueCount > 0 ? `View ${issueCount} ${downLabel.toLowerCase()} reasons` : 'All Systems Optimal'}
+                </p>
+                <p className="text-[8px] font-bold text-muted-foreground mt-1 uppercase tracking-tighter">
+                    Click to analyze dataset
+                </p>
+            </div>
+
             {/* Top Row: Title and Redirect */}
             <div className="flex items-start justify-between mb-2">
-                <h3 className="text-sm font-black uppercase tracking-wider text-foreground/80 font-display">
+                <h3 className="text-base font-black uppercase tracking-wider text-foreground/90 font-display">
                     {title}
                 </h3>
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
@@ -99,25 +124,17 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                             <span className="text-xl font-black text-emerald-500 tabular-nums">{value}</span>
                             <ArrowUp size={16} className="text-emerald-500" strokeWidth={3} />
                         </div>
-                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">UP</span>
+                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">{upLabel}</span>
                     </div>
                 </div>
 
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onIssuesClick?.();
-                    }}
-                    className="flex group/btn items-center gap-1.5"
-                >
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-1 transition-transform group-hover/btn:scale-110">
-                            <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
-                            <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
-                        </div>
-                        <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">DOWN</span>
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-1 transition-transform group-hover:scale-110">
+                        <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
+                        <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
                     </div>
-                </button>
+                    <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">{downLabel}</span>
+                </div>
             </div>
         </div>
     );

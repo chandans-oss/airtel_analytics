@@ -197,25 +197,26 @@ export function UnifiedMainDashboard() {
             link: { val: linksMonitored, total: totalLinks, issues: linkIssues },
             bw: { val: bwMonitored, total: totalLinks, issues: bwIssues },
             jitter: { val: jitterMonitored, total: totalLinks, issues: jitterIssues },
-            config: { val: configMonitored, total: totalNodes, issues: configIssues }
+            config: { val: configMonitored, total: totalNodes, issues: configIssues },
+            critical: { issues: allEvents.filter(e => e.severity === 'CRITICAL').length }
         };
-    }, [nodes, links, configFailure]);
+    }, [nodes, links, configFailure, allEvents]);
 
     const issueCategories = useMemo(() => {
         const linkDown = links.filter(l => l.linkStatus === 'DOWN');
-        const nodeDown = nodes.filter(n => n.status === 'DOWN');
-        const highLatency = links.filter(l => (l.performanceScore || 0) < 50 && l.linkStatus === 'UP');
+        const nodeDown = nodes.filter(n => n.snmpStatus === 'DOWN' || n.status === 'DOWN');
+        const highLatency = links.filter(l => (l.performanceScore || 100) < 60);
         const configIssues = configFailure;
         const criticalEvents = allEvents.filter(e => e.severity === 'CRITICAL');
 
         return [
-            { id: 'link_down', name: 'Critical Link Outages', count: linkDown.length, data: linkDown, icon: Zap, color: '#f43f5e' },
-            { id: 'node_down', name: 'Device Downstream Issues', count: nodeDown.length, data: nodeDown, icon: Database, color: '#e11d48' },
-            { id: 'config_failure', name: 'Compliance & Config Drift', count: configIssues.length, data: configIssues, icon: ShieldCheck, color: '#f59e0b' },
-            { id: 'performance_jitter', name: 'SLA Jitter Violations', count: highLatency.length, data: highLatency, icon: Activity, color: '#8b5cf6' },
-            { id: 'critical_alarms', name: 'Active Critical Alarms', count: criticalEvents.length, data: criticalEvents, icon: AlertTriangle, color: '#ef4444' }
+            { id: 'link_down', name: 'Critical Link Outages', count: stats.link.issues, data: linkDown, icon: Zap, color: '#f43f5e' },
+            { id: 'node_down', name: 'Device Downstream Issues', count: stats.device.issues, data: nodeDown, icon: Database, color: '#e11d48' },
+            { id: 'config_failure', name: 'Compliance & Config Drift', count: stats.config.issues, data: configIssues, icon: ShieldCheck, color: '#f59e0b' },
+            { id: 'performance_jitter', name: 'SLA Jitter Violations', count: stats.jitter.issues, data: highLatency, icon: Activity, color: '#8b5cf6' },
+            { id: 'critical_alarms', name: 'Active Critical Alarms', count: stats.critical.issues, data: criticalEvents, icon: AlertTriangle, color: '#ef4444' }
         ];
-    }, [nodes, links, allEvents, configFailure]);
+    }, [nodes, links, allEvents, configFailure, stats]);
 
     if (view === 'issues') {
         return (

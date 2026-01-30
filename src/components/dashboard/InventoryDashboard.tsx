@@ -97,11 +97,19 @@ export function InventoryDashboard() {
       <DataSidebar />
 
       {/* Top Header Section */}
-      <div className="hidden flex-col md:flex-row md:items-center justify-between gap-2 px-1">
-        <div />
-
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1 mb-4">
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-foreground">Advanced <span className="text-primary">Analytics</span> Engine</h2>
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1">Deep-dive multidimensional dataset analysis</p>
         </div>
+
+        <button
+          onClick={() => setSelectedModule('unified')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm"
+        >
+          <ChevronLeft size={16} />
+          Back to Overview
+        </button>
       </div>
 
       {/* KPI Section - Only show on main inventory page */}

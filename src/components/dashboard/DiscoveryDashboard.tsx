@@ -20,7 +20,8 @@ import {
     Database,
     Wifi,
     WifiOff,
-    Clock
+    Clock,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -200,6 +201,14 @@ export function DiscoveryDashboard() {
                         Network expansion tracking and infrastructure modifications.
                     </p>
                 </div>
+
+                <button
+                    onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
+                >
+                    <ChevronLeft size={16} />
+                    Back to Overview
+                </button>
             </div>
 
             {/* Timeline Filter */}

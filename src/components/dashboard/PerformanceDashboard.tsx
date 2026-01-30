@@ -8,7 +8,8 @@ import {
     Globe,
     ArrowUpRight,
     ArrowDownRight,
-    Search
+    Search,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -49,14 +50,25 @@ export function PerformanceDashboard() {
                         End-to-end telemetry, bandwidth utilization, and regional health.
                     </p>
                 </div>
-                <div className="flex -space-x-2">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-black uppercase">
-                            OP{i}
+
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
+                    >
+                        <ChevronLeft size={16} />
+                        Back to Overview
+                    </button>
+
+                    <div className="flex -space-x-2 hidden md:flex">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-black uppercase">
+                                OP{i}
+                            </div>
+                        ))}
+                        <div className="h-8 w-8 rounded-full border-2 border-background bg-primary flex items-center justify-center text-[10px] font-black uppercase text-primary-foreground">
+                            +5
                         </div>
-                    ))}
-                    <div className="h-8 w-8 rounded-full border-2 border-background bg-primary flex items-center justify-center text-[10px] font-black uppercase text-primary-foreground">
-                        +5
                     </div>
                 </div>
             </div>

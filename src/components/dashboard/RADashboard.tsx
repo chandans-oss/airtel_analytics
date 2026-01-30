@@ -11,7 +11,8 @@ import {
     ShieldCheck,
     LayoutDashboard,
     MoreVertical,
-    Map
+    Map,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -186,6 +187,13 @@ export function RADashboard() {
                     </p>
                 </div>
 
+                <button
+                    onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
+                >
+                    <ChevronLeft size={16} />
+                    Back to Overview
+                </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

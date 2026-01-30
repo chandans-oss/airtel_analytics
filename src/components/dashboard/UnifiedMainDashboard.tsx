@@ -76,7 +76,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
         >
             {/* Top Row: Title and Redirect */}
             <div className="flex items-start justify-between mb-2">
-                <h3 className="text-[11px] font-black uppercase tracking-wider text-foreground/80 font-display">
+                <h3 className="text-sm font-black uppercase tracking-wider text-foreground/80 font-display">
                     {title}
                 </h3>
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
@@ -99,7 +99,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                             <span className="text-xl font-black text-emerald-500 tabular-nums">{value}</span>
                             <ArrowUp size={16} className="text-emerald-500" strokeWidth={3} />
                         </div>
-                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">Healthy</span>
+                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">UP</span>
                     </div>
                 </div>
 
@@ -115,7 +115,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                             <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
                             <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
                         </div>
-                        <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">Issues</span>
+                        <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">DOWN</span>
                     </div>
                 </button>
             </div>

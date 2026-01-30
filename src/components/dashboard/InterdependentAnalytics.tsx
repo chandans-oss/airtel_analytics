@@ -7,7 +7,7 @@ import { ExportButton } from '../common/ExportButton';
 import { ChartTypeSelector } from '../common/ChartTypeSelector';
 import { exportToCSV } from '@/utils/exportUtils';
 import type { ChartType } from '@/types/inventory';
-import { Activity, Database, ExternalLink, Settings2, TrendingUp } from 'lucide-react';
+import { Activity, Database, ExternalLink, Settings2, TrendingUp, ChevronLeft, RotateCcw } from 'lucide-react';
 
 interface AnalyticsSetProps {
     title: string;
@@ -17,6 +17,7 @@ interface AnalyticsSetProps {
         field: string;
         expectedValues?: string[];
     }[];
+    showBackButton?: boolean;
 }
 
 interface HierarchyLevel {
@@ -25,8 +26,8 @@ interface HierarchyLevel {
     expectedValues?: string[];
 }
 
-export function AnalyticsSet({ title, type, levels }: AnalyticsSetProps) {
-    const { toggleFilter } = useInventoryStore();
+export function AnalyticsSet({ title, type, levels, showBackButton }: AnalyticsSetProps) {
+    const { toggleFilter, setSelectedModule } = useInventoryStore();
     const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
     const [widgetSizes, setWidgetSizes] = useState<Record<string, { span: number; height: number }>>({});
 
@@ -58,10 +59,29 @@ export function AnalyticsSet({ title, type, levels }: AnalyticsSetProps) {
         <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-3">
+                    {showBackButton && (
+                        <button
+                            onClick={() => setSelectedModule('unified')}
+                            className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                            title="Back to Overview"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                        </button>
+                    )}
                     <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <h3 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
                         {title}
                     </h3>
+                    <button
+                        onClick={() => {
+                            useInventoryStore.getState().clearFilters(type);
+                            setExpandedWidget(null);
+                        }}
+                        className="ml-2 p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-primary transition-all"
+                        title="Reset Filters & View"
+                    >
+                        <RotateCcw size={14} />
+                    </button>
                 </div>
                 <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
             </div>
@@ -171,7 +191,9 @@ function AnalyticsWidget({ level, type, isExpanded, customHeight, onToggleExpand
     onFilter: (val: string) => void
 }) {
     const { getFilteredNodesExcluding, getFilteredLinksExcluding, nodeFilters, linkFilters, setSelectedModule, toggleFilter } = useInventoryStore();
-    const [chartType, setChartType] = useState<ChartType>('bar');
+    const [chartType, setChartType] = useState<ChartType>(
+        (level.field === 'status' || level.field === 'linkStatus') ? 'donut' : 'bar'
+    );
     const [customTitle, setCustomTitle] = useState(level.label);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, name: string } | null>(null);
 
@@ -392,7 +414,7 @@ export function InterdependentAnalytics() {
     return (
         <div className="flex flex-col gap-6 pt-0">
             <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} />
+                <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} showBackButton />
             </div>
             <div className="animate-in fade-in slide-in-from-top-4 duration-700">
                 <AnalyticsSet title="Node Inventory Analytics" type="nodes" levels={nodeHierarchyLevels} />

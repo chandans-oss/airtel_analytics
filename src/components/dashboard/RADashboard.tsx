@@ -172,28 +172,21 @@ export function RADashboard() {
     return (
         <div className="space-y-4 animate-in fade-in duration-700">
             {/* --- HEADER --- */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                            <LayoutDashboard size={18} />
-                        </div>
-                        <h1 className="text-lg font-black uppercase tracking-tight text-foreground">
-                            RA Inventory <span className="text-primary/60">Intelligence</span>
-                        </h1>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground font-medium">
-                        Comprehensive analysis of Revenue Assurance and customer resource allocation.
-                    </p>
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                        title="Back to Overview"
+                    >
+                        <ChevronLeft size={20} strokeWidth={2.5} />
+                    </button>
+                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <h1 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
+                        RA Inventory Intelligence
+                    </h1>
                 </div>
-
-                <button
-                    onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
-                >
-                    <ChevronLeft size={16} />
-                    Back to Overview
-                </button>
+                <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

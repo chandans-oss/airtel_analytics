@@ -14,7 +14,8 @@ import {
     Download,
     LayoutDashboard,
     Search,
-    MessageSquare
+    MessageSquare,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportToCSV } from '@/utils/exportUtils';
@@ -87,28 +88,34 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
         <div
             onClick={onClick}
             className={cn(
-                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md overflow-visible",
+                "group relative rounded-2xl border px-4 py-3 transition-all duration-300 backdrop-blur-md overflow-visible",
                 statusColor.bg,
                 statusColor.border,
                 statusColor.hover,
                 onClick && "cursor-pointer hover:shadow-lg",
                 showMenu && "z-50 ring-2 ring-primary/20 shadow-2xl scale-[1.02]"
             )}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                if (issueCount > 0) {
+                    setShowMenu(true);
+                }
+            }}
         >
 
 
             {/* Top Row: Title and Redirect */}
-            <div className="flex items-start justify-between mb-2">
-                <h3 className="text-base font-black uppercase tracking-wider text-foreground/90 font-display">
+            <div className="flex items-start justify-between mb-0">
+                <h3 className="text-sm font-black uppercase tracking-wider text-foreground/90 font-display">
                     {title}
                 </h3>
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
+                <div className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
                     <ArrowUpRight size={14} />
                 </div>
             </div>
 
             {/* Center: Total Number */}
-            <div className="flex justify-center my-4">
+            <div className="flex justify-center my-0">
                 <span className="text-4xl font-black tabular-nums tracking-tighter text-foreground drop-shadow-sm">
                     {total}
                 </span>
@@ -122,49 +129,44 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                             <span className="text-xl font-black text-emerald-500 tabular-nums">{value}</span>
                             <ArrowUp size={16} className="text-emerald-500" strokeWidth={3} />
                         </div>
-                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">{upLabel}</span>
+                        <span className="text-[9px] font-bold text-emerald-500/60 uppercase tracking-tighter">{upLabel}</span>
                     </div>
                 </div>
 
                 <div
-                    className="relative flex flex-col items-center cursor-context-menu"
-                    onContextMenu={(e) => {
-                        e.preventDefault();
-                        if (issueCount > 0) {
-                            setShowMenu(true);
-                        }
-                    }}
+                    className="relative flex flex-col items-center"
                 >
                     {/* Right-Click Context Menu */}
                     {showMenu && (
                         <div
                             ref={menuRef}
-                            className="absolute bottom-full mb-8 left-1/2 -translate-x-1/2 z-[9999] animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200"
+                            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[50] animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onIssuesClick?.();
                                 setShowMenu(false);
                             }}
                         >
-                            <div className="bg-rose-600 border border-white/30 shadow-[0_20px_50px_rgba(225,29,72,0.6)] rounded-xl p-1.5 min-w-[180px]">
-                                <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/10 text-white transition-all group/item cursor-pointer">
-                                    <div className="p-2 rounded-lg bg-white/20">
-                                        <AlertTriangle size={18} className="text-white animate-pulse" />
+                            <div className="bg-rose-600 border border-white/30 shadow-[0_20px_50px_rgba(225,29,72,0.6)] rounded-lg p-1 min-w-[140px]">
+                                <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/10 text-white transition-all group/item cursor-pointer">
+                                    <div className="p-1.5 rounded bg-white/20">
+                                        <AlertTriangle size={14} className="text-white animate-pulse" />
                                     </div>
                                     <div className="flex flex-col items-start text-left">
-                                        <span className="text-[11px] font-black uppercase tracking-widest leading-none">Analyze {downLabel}</span>
-                                        <span className="text-[9px] opacity-80 font-bold uppercase tracking-tighter mt-1">View detailed records</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Analyze {downLabel}</span>
+                                        <span className="text-[8px] opacity-80 font-bold uppercase tracking-tighter mt-0.5">View details</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
+
                     <div className="flex items-center gap-1">
                         <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
                         <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
                     </div>
-                    <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">{downLabel}</span>
+                    <span className="text-[9px] font-bold text-rose-500/60 uppercase tracking-tighter">{downLabel}</span>
                 </div>
             </div>
         </div>
@@ -221,17 +223,21 @@ export function UnifiedMainDashboard() {
     if (view === 'issues') {
         return (
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-black uppercase tracking-widest">Global Issue Analytics</h2>
-                        <p className="text-sm text-muted-foreground mt-1">Cross-domain failure analysis and export center</p>
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setView('main')}
+                            className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                            title="Back to Overview"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                        </button>
+                        <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
+                            Global Issue Analytics
+                        </h2>
                     </div>
-                    <button
-                        onClick={() => setView('main')}
-                        className="px-4 py-2 rounded-xl bg-muted/50 hover:bg-muted font-bold text-xs uppercase tracking-widest transition-all"
-                    >
-                        Back to Overview
-                    </button>
+                    <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

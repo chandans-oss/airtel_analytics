@@ -192,127 +192,92 @@ export function DiscoveryDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-black uppercase tracking-widest text-foreground">
-                        Discovery & Change
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Network expansion tracking and infrastructure modifications.
-                    </p>
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                        title="Back to Overview"
+                    >
+                        <ChevronLeft size={20} strokeWidth={2.5} />
+                    </button>
+                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <div>
+                        <h1 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90 leading-tight">
+                            Discovery & Change
+                        </h1>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-pulse" />
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">System Audit Timeline</span>
+                        </div>
+                    </div>
                 </div>
 
-                <button
-                    onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
-                >
-                    <ChevronLeft size={16} />
-                    Back to Overview
-                </button>
-            </div>
+                <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
 
-            {/* Timeline Filter */}
-            <div className="rounded-xl border border-border/50 bg-card/50 p-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            Time Range Filter
-                        </span>
-                        <span className="text-xs text-foreground font-semibold px-2 py-1 bg-primary/10 rounded">
-                            {label}
-                        </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 border border-border/50">
+                    {(['today', '7days', '30days'] as const).map((range) => (
                         <button
-                            onClick={() => setTimeRange('today')}
+                            key={range}
+                            onClick={() => setTimeRange(range)}
                             className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                                timeRange === 'today'
+                                "px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all",
+                                timeRange === range
                                     ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-background/30"
                             )}
                         >
-                            Today
+                            {range === 'today' ? 'Today' : range === '7days' ? '7 Days' : '30 Days'}
                         </button>
+                    ))}
+                    <div className="relative">
                         <button
-                            onClick={() => setTimeRange('7days')}
+                            onClick={() => setShowDatePicker(!showDatePicker)}
                             className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                                timeRange === '7days'
+                                "px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1",
+                                timeRange === 'custom'
                                     ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-background/30"
                             )}
                         >
-                            7 Days
+                            Custom
+                            <ChevronDown size={10} className={cn("transition-transform", showDatePicker && "rotate-180")} />
                         </button>
-                        <button
-                            onClick={() => setTimeRange('30days')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                                timeRange === '30days'
-                                    ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                            )}
-                        >
-                            30 Days
-                        </button>
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowDatePicker(!showDatePicker)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1",
-                                    timeRange === 'custom'
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                                )}
-                            >
-                                Custom
-                                <ChevronDown size={12} className={cn("transition-transform", showDatePicker && "rotate-180")} />
-                            </button>
-
-                            {showDatePicker && (
-                                <div className="absolute right-0 top-full mt-2 p-4 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[280px]">
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                                                Start Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={customStartDate}
-                                                onChange={(e) => setCustomStartDate(e.target.value)}
-                                                className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                                                End Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={customEndDate}
-                                                onChange={(e) => setCustomEndDate(e.target.value)}
-                                                className="w-full px-3 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                if (customStartDate && customEndDate) {
-                                                    setTimeRange('custom');
-                                                    setShowDatePicker(false);
-                                                }
-                                            }}
-                                            disabled={!customStartDate || !customEndDate}
-                                            className="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-all"
-                                        >
-                                            Apply Range
-                                        </button>
+                        {showDatePicker && (
+                            <div className="absolute right-0 top-full mt-2 p-4 bg-card border border-border rounded-xl shadow-2xl z-50 min-w-[280px] animate-in fade-in zoom-in-95 duration-200">
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Start Date</label>
+                                        <input
+                                            type="date"
+                                            value={customStartDate}
+                                            onChange={(e) => setCustomStartDate(e.target.value)}
+                                            className="w-full px-3 py-2 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
                                     </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">End Date</label>
+                                        <input
+                                            type="date"
+                                            value={customEndDate}
+                                            onChange={(e) => setCustomEndDate(e.target.value)}
+                                            className="w-full px-3 py-2 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (customStartDate && customEndDate) {
+                                                setTimeRange('custom');
+                                                setShowDatePicker(false);
+                                            }
+                                        }}
+                                        className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
+                                    >
+                                        Apply Range
+                                    </button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

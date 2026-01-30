@@ -5,7 +5,7 @@ import { UniversalChartRenderer } from './DistributionCharts';
 import { DrilldownHierarchy } from './DrilldownHierarchy';
 import { AnalyticsSet } from './InterdependentAnalytics';
 import { cn } from '@/lib/utils';
-import { Maximize2, Minimize2, Download, Zap, Shield, Map as MapIcon, Users, Cpu, TrendingUp, AlertTriangle, CheckCircle2, Settings2, Activity, Database, ExternalLink, Gauge, Globe, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Maximize2, Minimize2, Download, Zap, Shield, Map as MapIcon, Users, Cpu, TrendingUp, AlertTriangle, CheckCircle2, Settings2, Activity, Database, ExternalLink, Gauge, Globe, ArrowUpRight, ArrowDownRight, ChevronLeft } from 'lucide-react';
 import { exportToCSV } from '@/utils/exportUtils';
 import { ChartTypeSelector } from '../common/ChartTypeSelector';
 import type { LinkData, NodeData, ChartType } from '@/types/inventory';
@@ -959,7 +959,7 @@ export function InventoryNodesModule() {
     const { nodeHierarchyLevels } = useInventoryStore();
     return (
         <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
-            <AnalyticsSet title="Node Inventory Analytics" type="nodes" levels={nodeHierarchyLevels} />
+            <AnalyticsSet title="Node Inventory Analytics" type="nodes" levels={nodeHierarchyLevels} showBackButton />
             <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-md p-6 shadow-xl min-h-[600px] flex flex-col">
                 <div className="pr-2 flex-1">
                     <DrilldownHierarchy entityType="nodes" />
@@ -973,7 +973,7 @@ export function InventoryLinksModule() {
     const { linkHierarchyLevels } = useInventoryStore();
     return (
         <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
-            <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} />
+            <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} showBackButton />
             <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-md p-6 shadow-xl min-h-[600px] flex flex-col">
                 <div className="pr-2 flex-1">
                     <DrilldownHierarchy entityType="links" />

@@ -13,13 +13,13 @@ import {
     Search,
     Server,
     Globe,
-    Medal,
     ShieldCheck,
     Wrench,
     Factory,
     Clock,
     Ticket,
-    AlertCircle
+    AlertCircle,
+    ChevronLeft
 } from 'lucide-react';
 import {
     CartesianGrid,
@@ -187,15 +187,7 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
 
     // --- NEW ANALYTICAL DATASETS ---
 
-    // 1. Service Assurance Matrix (Premium vs Standard)
-    const serviceImpactData = useMemo(() => {
-        const premiumCount = events.filter(e => e.isPremium?.toLowerCase().includes('yes')).length;
-        const standardCount = events.length - premiumCount;
-        return [
-            { name: 'Premium Segment', value: premiumCount, color: 'hsl(var(--primary))' },
-            { name: 'Standard Segment', value: standardCount, color: 'hsl(var(--muted-foreground))' }
-        ];
-    }, [events]);
+
 
     // 2. Ticket Maturity (SR Status)
     const ticketMaturityData = useMemo(() => {
@@ -239,7 +231,6 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
         const openTickets = events.filter(e => e.srStatus && !['Closed', 'Resolved'].includes(e.srStatus)).length;
 
         return [
-            { name: 'Premium Impact', value: premiumAtRisk, icon: Medal, color: 'hsl(45, 93%, 47%)', sub: 'Critical SLAs' },
             { name: 'NOC Silence', value: `${opsEfficiency[1].value}%`, icon: ShieldCheck, color: 'hsl(142, 69%, 58%)', sub: 'Suppression Rate' },
             { name: 'Active Tickets', value: openTickets, icon: Wrench, color: 'hsl(217, 91%, 60%)', sub: 'Pending MTTR' },
             { name: 'Network Vendors', value: vendorReliability.length, icon: Factory, color: 'hsl(262, 83%, 58%)', sub: 'Platform Context' },
@@ -282,15 +273,25 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 mb-4">
+                <button
+                    onClick={() => setSelectedModule('unified')}
+                    className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                    title="Back to Overview"
+                >
+                    <ChevronLeft size={20} strokeWidth={2.5} />
+                </button>
+                <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                 <div>
-                    <h2 className="text-xl font-black uppercase tracking-tight">
+                    <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
                         {filteredContext ? 'Contextual Event Analysis' : 'Global Event Intelligence'}
                     </h2>
-                    <p className="text-xs text-muted-foreground">
-                        {filteredContext ? 'Filtered view based on selected inventory segment' : 'Real-time analysis of network-wide alarms and anomalies'}
+                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
+                        {filteredContext ? 'Segmented analysis of network-wide alarms' : 'Real-time analysis of network alarms & anomalies'}
                     </p>
                 </div>
+
+                <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
 
                 <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 border border-border/50">
                     {(['3H', '24H', '7D', '30D', 'ALL'] as const).map((r) => (
@@ -399,39 +400,7 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
                             </div>
                         </div>
 
-                        {/* Service Impact Segment */}
-                        <div className="col-span-12 lg:col-span-8 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
-                                <Medal size={16} className="text-amber-500" />
-                                Service Assurance Matrix
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[250px]">
-                                <div className="space-y-4 flex flex-col justify-center">
-                                    {serviceImpactData.map((seg, i) => (
-                                        <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/50 hover:bg-muted/30 transition-colors">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{seg.name}</span>
-                                                <span className="text-2xl font-black">{seg.value} Active Faults</span>
-                                            </div>
-                                            <div className="h-10 w-1 rounded-full shadow-[0_0_8px] shadow-current" style={{ backgroundColor: seg.color, color: seg.color }} />
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="border-l border-border/50 pl-8 flex flex-col justify-center">
-                                    <div className="text-center mb-6">
-                                        <div className="text-5xl font-black text-primary drop-shadow-[0_0_15px_hsl(var(--primary)/30%)]">
-                                            {Math.round((events.filter(e => e.business?.includes('24*7')).length / (events.length || 1)) * 100)}%
-                                        </div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">24*7 Critical Support Mix</div>
-                                    </div>
-                                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
-                                        <p className="text-[11px] font-medium leading-relaxed text-muted-foreground italic text-center">
-                                            Critical faults in the premium segment are prioritized for sub-4hr MTTR resolution to ensure SLA compliance.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* Row 3: Regional Footprint & State Analysis */}
@@ -477,46 +446,6 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
                         </div>
                     </div>
 
-                    {/* Row 4: Severity Distribution & Correlation Flows */}
-                    <div className="grid grid-cols-12 gap-6">
-                        {/* Severity Counts Plot */}
-                        <div className="col-span-12 lg:col-span-4 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm overflow-hidden">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
-                                <AlertCircle size={16} className="text-primary" />
-                                Severity Distribution
-                            </h3>
-                            <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={severityDistribution} layout="vertical" margin={{ left: 10, right: 40 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis
-                                            dataKey="name"
-                                            type="category"
-                                            width={70}
-                                            tick={{ fontSize: 10, fontWeight: '800' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/2%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }} />
-                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
-                                            {severityDistribution.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                            <LabelList dataKey="value" position="right" style={{ fontSize: '11px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} />
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        {/* Advanced Correlation Flows (Moved here) */}
-                        <div className="col-span-12 lg:col-span-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <CausalFlowSankey data={events} />
-                                <MultiDimParallelSankey data={events} />
-                            </div>
-                        </div>
-                    </div>
                 </div>
             ) : (
                 // --- DRILL-DOWN LAYOUT (Preserved Existing) ---

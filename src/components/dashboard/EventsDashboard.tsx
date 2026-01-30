@@ -116,23 +116,21 @@ export function EventsDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-black uppercase tracking-widest text-foreground">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
+                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                        title="Back to Overview"
+                    >
+                        <ChevronLeft size={20} strokeWidth={2.5} />
+                    </button>
+                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <h1 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
                         Global Event Intelligence
                     </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Real-time analysis of network-wide alarms and anomalies
-                    </p>
                 </div>
-
-                <button
-                    onClick={() => useInventoryStore.getState().setSelectedModule('unified')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all font-black text-[10px] uppercase tracking-widest shadow-sm self-start md:self-center"
-                >
-                    <ChevronLeft size={16} />
-                    Back to Overview
-                </button>
+                <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />
             </div>
 
             {/* Timeline Filter */}

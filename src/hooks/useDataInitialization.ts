@@ -20,12 +20,12 @@ export function useDataInitialization() {
         const loadDefaultData = async () => {
             setIsProcessing(true);
             try {
-                const filePath = '/data/Airtel Data.xlsx';
+                const filePath = '/data/Network Data.xlsx';
 
                 // Check if the file exists first
                 const checkResponse = await fetch(filePath, { method: 'HEAD' });
                 if (!checkResponse.ok) {
-                    console.warn('Airtel Data.xlsx not found in /public/data/');
+                    console.warn('Network Data.xlsx not found in /public/data/');
                     setIsProcessing(false);
                     return;
                 }

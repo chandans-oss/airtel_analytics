@@ -58,19 +58,7 @@ export function EventsTrendLineChart({ data, timeRange = '24H' }: { data: any[],
             result.push({
                 time: format(endOfInterval),
                 Events: bucketEvents.length,
-                Failures: bucketEvents.filter(e => e.severity === 'CRITICAL' || e.severity === 'MAJOR').length,
-                Reachability: 100 - (bucketEvents.filter(e => e.category?.toLowerCase().includes('reach')).length * 5),
             });
-        }
-
-        // If no real data, seed it for demo but with correct time axes
-        if (data.length === 0) {
-            return result.map(bucket => ({
-                ...bucket,
-                Events: Math.floor(Math.random() * 40) + 10,
-                Failures: Math.floor(Math.random() * 8),
-                Reachability: 95 + Math.floor(Math.random() * 5),
-            }));
         }
 
         return result;
@@ -89,9 +77,7 @@ export function EventsTrendLineChart({ data, timeRange = '24H' }: { data: any[],
                         itemStyle={{ fontSize: '11px' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                    <Line type="monotone" dataKey="Events" stroke={COLORS.primary} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="Failures" stroke={COLORS.danger} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="Reachability" stroke={COLORS.success} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="Events" stroke={COLORS.primary} strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -135,17 +121,6 @@ export function SeverityAreaChart({ data, timeRange = '24H' }: { data: any[], ti
                 Minor: bucketEvents.filter(e => e.severity === 'MINOR').length,
                 Info: bucketEvents.filter(e => e.severity === 'WARNING' || e.severity === 'INFO').length,
             });
-        }
-
-        // Fallback for demo if no real data
-        if (data.length === 0) {
-            return result.map(bucket => ({
-                ...bucket,
-                Critical: Math.floor(Math.random() * 5),
-                Major: Math.floor(Math.random() * 10) + 2,
-                Minor: Math.floor(Math.random() * 15) + 5,
-                Info: Math.floor(Math.random() * 20) + 10,
-            }));
         }
 
         return result;
@@ -290,19 +265,7 @@ const CustomSankeyLink = ({ sourceX, targetX, sourceY, targetY, linkWidth, index
 export function CausalFlowSankey({ data = [] }: { data: any[] }) {
     const sankeyData = useMemo(() => {
         if (!data || data.length === 0) {
-            // Seed data for demo if no real events
-            return {
-                nodes: [
-                    { name: 'SNMP Scan', color: '#3b82f6' }, { name: 'ICMP Poll', color: '#10b981' },
-                    { name: 'Critical', color: '#ef4444' }, { name: 'Major', color: '#f97316' }, { name: 'Minor', color: '#facc15' },
-                    { name: 'BFD Down', color: '#8b5cf6' }, { name: 'Interface', color: '#ec4899' }, { name: 'Latency', color: '#6366f1' }
-                ],
-                links: [
-                    { source: 0, target: 2, value: 30 }, { source: 0, target: 3, value: 45 },
-                    { source: 1, target: 2, value: 20 }, { source: 2, target: 5, value: 35 },
-                    { source: 3, target: 6, value: 25 }, { source: 4, target: 7, value: 15 }
-                ]
-            };
+            return { nodes: [], links: [] };
         }
 
         const nodesMap = new Map<string, { name: string, color: string }>();
@@ -353,16 +316,22 @@ export function CausalFlowSankey({ data = [] }: { data: any[] }) {
             <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-1">Causal Flow Analysis</h3>
             <p className="text-[10px] text-muted-foreground mb-4">Correlation: Scan Type → Severity → Root Cause</p>
             <ResponsiveContainer width="100%" height="85%">
-                <Sankey
-                    data={sankeyData}
-                    node={<CustomSankeyNode />}
-                    link={<CustomSankeyLink />}
-                    nodePadding={20}
-                    nodeWidth={20}
-                    margin={{ left: 100, right: 100, top: 20, bottom: 20 }}
-                >
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', fontSize: '10px' }} />
-                </Sankey>
+                {sankeyData.nodes.length > 0 ? (
+                    <Sankey
+                        data={sankeyData}
+                        node={<CustomSankeyNode />}
+                        link={<CustomSankeyLink />}
+                        nodePadding={20}
+                        nodeWidth={20}
+                        margin={{ left: 100, right: 100, top: 20, bottom: 20 }}
+                    >
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', fontSize: '10px' }} />
+                    </Sankey>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center border border-dashed border-border/20 rounded-xl bg-muted/5 opacity-50">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">No Flow Data</span>
+                    </div>
+                )}
             </ResponsiveContainer>
         </div>
     );
@@ -371,18 +340,7 @@ export function CausalFlowSankey({ data = [] }: { data: any[] }) {
 export function MultiDimParallelSankey({ data = [] }: { data: any[] }) {
     const sankeyData = useMemo(() => {
         if (!data || data.length === 0) {
-            return {
-                nodes: [
-                    { name: 'Link Failure', color: '#f43f5e' }, { name: 'Device Down', color: '#f59e0b' },
-                    { name: 'North', color: '#3b82f6' }, { name: 'South', color: '#8b5cf6' }, { name: 'East', color: '#10b981' },
-                    { name: 'Power Cut', color: '#ef4444' }, { name: 'Fiber Cut', color: '#f97316' }, { name: 'Config Error', color: '#6366f1' }
-                ],
-                links: [
-                    { source: 0, target: 2, value: 40 }, { source: 0, target: 3, value: 30 },
-                    { source: 1, target: 2, value: 15 }, { source: 1, target: 4, value: 25 },
-                    { source: 2, target: 5, value: 25 }, { source: 2, target: 6, value: 30 }
-                ]
-            };
+            return { nodes: [], links: [] };
         }
 
         const nodesMap = new Map<string, { name: string, color: string }>();
@@ -426,16 +384,22 @@ export function MultiDimParallelSankey({ data = [] }: { data: any[] }) {
             <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-1">Multi-Dimensional Correlations</h3>
             <p className="text-[10px] text-muted-foreground mb-4">Flow: Event Type → Region → Probable Cause</p>
             <ResponsiveContainer width="100%" height="85%">
-                <Sankey
-                    data={sankeyData}
-                    node={<CustomSankeyNode />}
-                    link={<CustomSankeyLink />}
-                    nodePadding={20}
-                    nodeWidth={20}
-                    margin={{ left: 100, right: 100, top: 20, bottom: 20 }}
-                >
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', fontSize: '10px' }} />
-                </Sankey>
+                {sankeyData.nodes.length > 0 ? (
+                    <Sankey
+                        data={sankeyData}
+                        node={<CustomSankeyNode />}
+                        link={<CustomSankeyLink />}
+                        nodePadding={20}
+                        nodeWidth={20}
+                        margin={{ left: 100, right: 100, top: 20, bottom: 20 }}
+                    >
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', fontSize: '10px' }} />
+                    </Sankey>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center border border-dashed border-border/20 rounded-xl bg-muted/5 opacity-50">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">No Correlation Data</span>
+                    </div>
+                )}
             </ResponsiveContainer>
         </div>
     );

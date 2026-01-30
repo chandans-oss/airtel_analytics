@@ -10,12 +10,19 @@ import {
     History,
     AlertCircle,
     Monitor,
-    ArrowLeft
+    ArrowLeft,
+    Settings,
+    RotateCcw,
+    Calendar,
+    CheckCircle2,
+    Clock
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-    BarChart, Bar, XAxis, YAxis, CartesianGrid
+    BarChart, Bar, XAxis, YAxis, CartesianGrid,
+    LineChart, Line
 } from 'recharts';
+import { exportToCSV } from '@/utils/exportUtils';
 
 const COLORS = [
     'hsl(12, 85%, 55%)',
@@ -25,47 +32,70 @@ const COLORS = [
 ];
 
 export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredContext?: boolean }) {
-    const { getFilteredConfigFailures, configFailure, getFilteredNodes, nodes: allNodes, setSelectedModule } = useInventoryStore();
+    const { getFilteredConfigFailures, configFailure, getFilteredNodes, nodes: allNodes, setSelectedModule, configCalendar } = useInventoryStore();
 
-    const failures = filteredContext ? getFilteredConfigFailures() : configFailure;
 
-    // For "Failures by Device Type", we need to look up node details.
-    // If strict context, use filtered nodes. If global, use all nodes.
     const nodesToUse = filteredContext ? getFilteredNodes() : allNodes;
-
-    // We must pass nodesToUse to the useMemos or use it directly, but current implementation calls getFilteredNodes() inside.
-    // So we need to refactor previous implementation slightly to rely on passed nodes
     const nodes = nodesToUse;
 
+    // START MERGED LOGIC
+    // Filter Calendar Events based on context
+    const calendarEvents = useMemo(() => {
+        if (!filteredContext) return configCalendar;
+        const nodeNames = new Set(nodes.map(n => n.deviceName));
+        return configCalendar.filter(c => nodeNames.has(c.deviceName));
+    }, [filteredContext, configCalendar, nodes]);
+
+    // Derived Lists
+    // Rich failure data is in configFailure store
+    const richFailures = filteredContext ? getFilteredConfigFailures() : configFailure;
+
+    // We use calendar for successes (as they are not in failure list)
+    const successes = useMemo(() => calendarEvents.filter(c => c.state === 'SUCCESS'), [calendarEvents]);
+
+    // We use richFailures for failure analysis, but basic failure count can come from calendar too. 
+    // Let's stick to richFailures for the 'failures' variable to support the charts dependent on failureReason.
+    const failures = richFailures;
+
+    // Stats
+    const pendingAudits = useMemo(() => calendarEvents.filter(c => c.state === 'Scheduled').length, [calendarEvents]);
+
+    const timelineData = useMemo(() => {
+        const dailyCounts: Record<string, number> = {};
+        calendarEvents.forEach(c => {
+            const date = c.date?.split(' ')[0] || 'Unknown';
+            dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+        });
+        return Object.entries(dailyCounts)
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(-7);
+    }, [calendarEvents]);
+
     const failureStats = useMemo(() => {
-        const counts: Record<string, number> = {
-            'Access Denied': 0,
-            'Ping Failed': 0,
-            'SNMP Failed': 0,
-            'SSH Failed': 0,
-            'Others': 0
-        };
+        const counts: Record<string, number> = {};
 
         failures.forEach(f => {
-            const reason = f.failureReason || '';
-            if (reason.includes('Denied') || reason.includes('Auth')) counts['Access Denied']++;
-            else if (reason.includes('Ping')) counts['Ping Failed']++;
-            else if (reason.includes('SNMP')) counts['SNMP Failed']++;
-            else if (reason.includes('SSH')) counts['SSH Failed']++;
-            else counts['Others']++;
+            const reason = f.failureReason || 'Unknown';
+            counts[reason] = (counts[reason] || 0) + 1;
         });
 
         return Object.entries(counts)
             .map(([name, value]) => ({ name, value }))
-            .filter(d => d.value > 0);
+            .sort((a, b) => b.value - a.value);
     }, [failures]);
 
     const failuresByDeviceType = useMemo(() => {
         const counts: Record<string, number> = {};
         failures.forEach(f => {
-            const node = nodes.find(n => n.deviceName === f.deviceName);
-            const type = node?.deviceType || 'Unknown';
-            counts[type] = (counts[type] || 0) + 1;
+            const typeFromRow = f.deviceType;
+            if (typeFromRow && typeFromRow !== 'Unknown') {
+                counts[typeFromRow] = (counts[typeFromRow] || 0) + 1;
+            } else {
+                const node = nodes.find(n => n.deviceName === f.deviceName || n.loopbackIP === f.ipAddress || n.mgmtIP === f.ipAddress || n.primaryIP === f.ipAddress);
+                const type = node?.deviceType || 'Unknown';
+                counts[type] = (counts[type] || 0) + 1;
+            }
         });
         return Object.entries(counts)
             .map(([name, value]) => ({ name, value }))
@@ -80,18 +110,59 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
         return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     }, [failures]);
 
-    const complianceScore = useMemo(() => {
-        const total = nodes.length || 1;
-        const failed = new Set(failures.map(f => f.deviceName)).size;
-        return Math.max(0, Math.round(((total - failed) / total) * 100));
-    }, [nodes, failures]);
+    // NEW PLOTS DATA PROCESSING
 
-    // Simulated version changes
-    const versionChanges = [
-        { device: failures[0]?.deviceName || 'RTR-CORE-01', from: 'IOS-XE 17.3', to: 'IOS-XE 17.6', date: '2024-01-20', status: 'Failed' },
-        { device: failures[1]?.deviceName || 'SW-EDGE-04', from: 'V.15.2', to: 'V.15.4', date: '2024-01-19', status: 'In Progress' },
-        { device: failures[2]?.deviceName || 'FW-DC-02', from: 'FortiOS 6.4', to: 'FortiOS 7.0', date: '2024-01-18', status: 'Pending' },
-    ];
+    const profileStatusDistribution = useMemo(() => {
+        const profileMap: Record<string, { UP: number, DOWN: number }> = {};
+        failures.forEach(f => {
+            const p = f.configurationProfile || 'Default';
+            if (!profileMap[p]) profileMap[p] = { UP: 0, DOWN: 0 };
+            const node = nodes.find(n => n.deviceName === f.deviceName || n.loopbackIP === f.ipAddress || n.mgmtIP === f.ipAddress || n.primaryIP === f.ipAddress);
+            if (node?.status === 'UP') profileMap[p].UP++;
+            else profileMap[p].DOWN++;
+        });
+        return Object.entries(profileMap).map(([name, stats]) => ({
+            name,
+            UP: stats.UP,
+            DOWN: stats.DOWN
+        }));
+    }, [failures, nodes]);
+
+    const snmpHealthByProfile = useMemo(() => {
+        const profileMap: Record<string, { SNMP_UP: number, SNMP_DOWN: number }> = {};
+        failures.forEach(f => {
+            const p = f.configurationProfile || 'Default';
+            if (!profileMap[p]) profileMap[p] = { SNMP_UP: 0, SNMP_DOWN: 0 };
+            const node = nodes.find(n => n.deviceName === f.deviceName || n.loopbackIP === f.ipAddress || n.mgmtIP === f.ipAddress || n.primaryIP === f.ipAddress);
+            const isSnmpUp = node?.snmpStatus?.toUpperCase() === 'UP' || f.scanType?.toUpperCase().includes('SNMP');
+            if (isSnmpUp) profileMap[p].SNMP_UP++;
+            else profileMap[p].SNMP_DOWN++;
+        });
+        return Object.entries(profileMap).map(([name, stats]) => ({
+            name,
+            'SNMP UP': stats.SNMP_UP,
+            'SNMP DOWN': stats.SNMP_DOWN
+        }));
+    }, [failures, nodes]);
+
+    const failureReasonsByProfile = useMemo(() => {
+        const profileMap: Record<string, Record<string, number>> = {};
+        failures.forEach(f => {
+            const p = f.configurationProfile || 'Default';
+            const r = f.failureReason || 'Unknown';
+            if (!profileMap[p]) profileMap[p] = {};
+            profileMap[p][r] = (profileMap[p][r] || 0) + 1;
+        });
+
+        const allReasons = Array.from(new Set(failures.map(f => f.failureReason || 'Unknown')));
+
+        return Object.entries(profileMap).map(([name, counts]) => ({
+            name,
+            ...counts
+        }));
+    }, [failures]);
+
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -109,39 +180,103 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                         <span className="text-xs font-bold uppercase tracking-widest text-foreground">Config Management Compliance</span>
                     </div>
                 </div>
-                <button className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-destructive hover:text-white transition-all">
-                    <Download size={14} />
-                    Export Compliance Report
-                </button>
+                <div className="flex gap-2">
+                    <button className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted transition-all">
+                        <RotateCcw size={14} />
+                        Trigger Audit
+                    </button>
+                    <button className="flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-lg hover:bg-primary/90 transition-all">
+                        <Settings size={14} />
+                        Config Policies
+                    </button>
+                    <button
+                        onClick={() => exportToCSV(failures, 'Config_Compliance_Report')}
+                        className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-destructive hover:text-white transition-all"
+                    >
+                        <Download size={14} />
+                        Export Compliance Report
+                    </button>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-1 border-l-4 border-destructive rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Download Failures</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="relative group border-l-4 border-primary rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Compliance Rate</p>
+                    <p className="text-3xl font-black text-foreground">
+                        {Math.round((successes.length / ((successes.length + failures.length) || 1)) * 100)}%
+                    </p>
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <CheckCircle2 size={10} className="text-primary" />
+                        <span>Network adherence</span>
+                    </div>
+                </div>
+
+                <div className="relative group border-l-4 border-destructive rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                    <button
+                        onClick={() => exportToCSV(failures, 'All_Config_Failures')}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-destructive hover:text-white transition-all shadow-sm"
+                        title="Export All Failures"
+                    >
+                        <Download size={12} />
+                    </button>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Active Failures</p>
                     <p className="text-3xl font-black text-destructive">{failures.length}</p>
                     <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
                         <AlertCircle size={10} />
-                        <span>{filteredContext ? 'Segment-specific issues' : 'Requires NOC intervention'}</span>
+                        <span>Requires NOC intervention</span>
                     </div>
                 </div>
 
-                <div className="md:col-span-1 border-l-4 border-emerald-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Compliance Adherence</p>
-                    <p className="text-3xl font-black text-emerald-500">{complianceScore}%</p>
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${complianceScore}%` }} />
+                <div className="relative group border-l-4 border-emerald-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                    <button
+                        onClick={() => exportToCSV(successes, 'Config_Sync_Success')}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                        title="Export Successful Syncs"
+                    >
+                        <Download size={12} />
+                    </button>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Successful Syncs</p>
+                    <p className="text-3xl font-black text-emerald-500">{successes.length}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <AlertCircle size={10} className="text-emerald-500" />
+                        <span>Operations verified</span>
                     </div>
                 </div>
 
-                {failureStats.slice(0, 3).map((stat, i) => (
-                    <div key={stat.name} className="rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.name}</p>
+                <div className="relative group border-l-4 border-blue-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Events</p>
+                    <p className="text-3xl font-black text-foreground">{configCalendar.length}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <Clock size={10} className="text-blue-500" />
+                        <span>Recorded changes</span>
+                    </div>
+                </div>
+
+                <div className="relative group border-l-4 border-orange-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Scheduled Audits</p>
+                    <p className="text-3xl font-black text-orange-500">{pendingAudits}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <Calendar size={10} className="text-orange-500" />
+                        <span>Pending execution</span>
+                    </div>
+                </div>
+
+                {failureStats.slice(0, 7).map((stat, i) => (
+                    <div key={stat.name} className="relative group rounded-xl border border-border bg-card/30 p-4 space-y-2">
+                        <button
+                            onClick={() => exportToCSV(failures.filter(f => (f.failureReason || 'Unknown') === stat.name), `Config_${stat.name.replace(/[^a-z0-9]/gi, '_')}`)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-white transition-all shadow-sm"
+                            title={`Export ${stat.name} data`}
+                        >
+                            <Download size={12} />
+                        </button>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground truncate pr-6" title={stat.name}>{stat.name}</p>
                         <p className="text-3xl font-black text-foreground">{stat.value}</p>
                         <div className="h-1 w-full bg-muted rounded-full">
                             <div
                                 className="h-full rounded-full transition-all duration-1000"
                                 style={{
-                                    width: `${(stat.value / failures.length) * 100}%`,
+                                    width: `${(stat.value / (failures.length || 1)) * 100}%`,
                                     backgroundColor: COLORS[i % COLORS.length]
                                 }}
                             />
@@ -175,6 +310,33 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                         contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                     />
                                 </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
+                            <History size={16} className="text-blue-500" />
+                            Change Activity (Last 7 Days)
+                        </h3>
+                        <div className="h-[200px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={timelineData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                                    <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="count"
+                                        stroke="hsl(var(--primary))"
+                                        strokeWidth={3}
+                                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
+                                        activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                                    />
+                                </LineChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
@@ -214,42 +376,84 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                     </div>
                 </div>
 
-                <div className="col-span-12 rounded-xl border border-border bg-card overflow-hidden">
-                    <div className="bg-muted/30 px-6 py-3 border-b border-border flex items-center gap-2">
-                        <History size={14} className="text-muted-foreground" />
-                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Version Change Compliance - Conflict Details</h3>
-                    </div>
-                    <div className="p-0 overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                            <thead className="bg-muted/10 text-muted-foreground font-bold uppercase tracking-tighter border-b border-border/50">
-                                <tr>
-                                    <th className="px-6 py-3">Device Name</th>
-                                    <th className="px-6 py-3">Source Version</th>
-                                    <th className="px-6 py-3">Target Version</th>
-                                    <th className="px-6 py-3">Scheduled Date</th>
-                                    <th className="px-6 py-3">Last Attempt Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/50">
-                                {versionChanges.map((change, i) => (
-                                    <tr key={i} className="hover:bg-muted/20 transition-colors">
-                                        <td className="px-6 py-4 font-bold">{change.device}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{change.from}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{change.to}</td>
-                                        <td className="px-6 py-4 italic">{change.date}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${change.status === 'Failed' ? 'bg-destructive/10 text-destructive' :
-                                                change.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
-                                                }`}>
-                                                {change.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+
+                {/* Profile Status Distribution */}
+                <div className="col-span-12 lg:col-span-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
+                        <Monitor size={16} className="text-emerald-500" />
+                        Profile Operational Status
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground mb-4">Device reachability grouped by assigned config profile.</p>
+                    <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={profileStatusDistribution} stackOffset="expand">
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                                <XAxis dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                />
+                                <Bar dataKey="UP" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} barSize={40} />
+                                <Bar dataKey="DOWN" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
+
+                {/* SNMP Health by Profile */}
+                <div className="col-span-12 lg:col-span-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
+                        <Monitor size={16} className="text-blue-500" />
+                        Profile SNMP Monitoring Health
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground mb-4">Correlation between configuration failures and monitoring visibility.</p>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={snmpHealthByProfile}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                />
+                                <Bar dataKey="SNMP UP" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                                <Bar dataKey="SNMP DOWN" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={30} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Failure Reasons by Profile */}
+                <div className="col-span-12 lg:col-span-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
+                        <AlertCircle size={16} className="text-destructive" />
+                        Failure Reasons by Profile
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground mb-4">Granular failure classification mapped to config profiles.</p>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={failureReasonsByProfile} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.3} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={80} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                />
+                                {Array.from(new Set(failures.map(f => f.failureReason || 'Unknown'))).map((reason, i) => (
+                                    <Bar
+                                        key={reason}
+                                        dataKey={reason}
+                                        stackId="r"
+                                        fill={[`#ef4444`, `#f59e0b`, `#3b82f6`, `#8b5cf6`, `#10b981`][i % 5]}
+                                        radius={[0, 4, 4, 0]}
+                                        barSize={20}
+                                    />
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

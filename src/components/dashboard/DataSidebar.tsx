@@ -86,7 +86,7 @@ export function DataSidebar() {
                     {/* Footer - Optional */}
                     <div className="border-t border-border p-6 bg-muted/30">
                         <p className="text-xs text-muted-foreground text-center">
-                            Airtel ENOC Command Center - Real-time Network Inventory Analysis
+                            INFRAON Analytics Command Center - Real-time Network Inventory Analysis
                         </p>
                     </div>
                 </div>

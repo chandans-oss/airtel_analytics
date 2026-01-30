@@ -1,9 +1,10 @@
 import { InventoryDashboard } from '@/components/dashboard/InventoryDashboard';
 import { EventsDashboard } from '@/components/dashboard/EventsDashboard';
 import { RADashboard } from '@/components/dashboard/RADashboard';
-import { ConfigDashboard } from '@/components/dashboard/ConfigDashboard';
+
 import { DiscoveryDashboard } from '@/components/dashboard/DiscoveryDashboard';
 import { PerformanceDashboard } from '@/components/dashboard/PerformanceDashboard';
+import { UnifiedMainDashboard } from '@/components/dashboard/UnifiedMainDashboard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessingOverlay } from '@/components/data/ProcessingOverlay';
 import { useInventoryStore } from '@/store/inventoryStore';
@@ -14,6 +15,10 @@ const Index = () => {
   useDataInitialization();
 
   const renderContent = () => {
+    if (selectedModule === 'unified') {
+      return <UnifiedMainDashboard />;
+    }
+
     if (['inventory', 'events', 'config', 'filteredEvents', 'filteredConfig'].includes(selectedModule)) {
       return <InventoryDashboard />;
     }

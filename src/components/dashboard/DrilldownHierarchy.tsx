@@ -291,26 +291,28 @@ export function DrilldownHierarchy({ entityType = 'nodes', setEntityType }: Dril
                         <Settings2 size={16} />
                     </button>
                     {/* Entity Type Toggle */}
-                    <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
-                        <button
-                            onClick={() => setEntityType?.('nodes')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5",
-                                entityType === 'nodes' ? "bg-emerald-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            <Settings2 size={10} /> Nodes
-                        </button>
-                        <button
-                            onClick={() => setEntityType?.('links')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5",
-                                entityType === 'links' ? "bg-emerald-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            <ExternalLink size={10} /> Links
-                        </button>
-                    </div>
+                    {setEntityType && (
+                        <div className="flex bg-muted/50 p-1 rounded-lg border border-border/50">
+                            <button
+                                onClick={() => setEntityType?.('nodes')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5",
+                                    entityType === 'nodes' ? "bg-emerald-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Settings2 size={10} /> Nodes
+                            </button>
+                            <button
+                                onClick={() => setEntityType?.('links')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5",
+                                    entityType === 'links' ? "bg-emerald-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <ExternalLink size={10} /> Links
+                            </button>
+                        </div>
+                    )}
 
                     <div className="h-6 w-px bg-border/50" />
 

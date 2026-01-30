@@ -10,16 +10,13 @@ import {
     Zap,
     ChevronLeft,
     TrendingUp,
+    Link2,
     BarChart3
 } from 'lucide-react';
 
 const inventorySubModules = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'ops', label: 'Network Operations', icon: Activity },
-    { id: 'business', label: 'Business & Customers', icon: Users },
-    { id: 'geography', label: 'Geography & Field', icon: Map },
-    { id: 'tech', label: 'Technical Assets', icon: Cpu },
-    { id: 'lifecycle', label: 'Lifecycle & Status', icon: BarChart3 },
+    { id: 'links', label: 'Links Analysis', icon: Link2 },
+    { id: 'nodes', label: 'Nodes Analysis', icon: Cpu },
 ];
 
 export function InventorySidebar() {

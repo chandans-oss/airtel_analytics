@@ -41,10 +41,10 @@ export function useDataInitialization() {
                 if (data['Config Failure']) setConfigFailure(data['Config Failure']);
                 if (data['Customers']) setCustomers(data['Customers']);
 
-                toast.success('Airtel Data workbook loaded successfully');
+                toast.success('Data workbook loaded successfully');
             } catch (error) {
                 console.error('Data initialization error:', error);
-                toast.error('Failed to load Airtel Data.xlsx');
+                toast.error('Failed to load Data.xlsx');
             } finally {
                 setIsProcessing(false);
             }

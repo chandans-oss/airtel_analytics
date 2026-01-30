@@ -153,13 +153,13 @@ export async function parseFullInventoryWorkbook(url: string) {
   // Fuzzy match sheet names to standard keys
   const normalizeSheetName = (name: string): string => {
     const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (n.includes('node') && n.includes('inventory')) return 'Node Inventory';
-    if (n.includes('link') && n.includes('inventory')) return 'Link Inventory';
+    if (n.includes('node')) return 'Node Inventory';
+    if (n.includes('link')) return 'Link Inventory';
     if (n.includes('active') && n.includes('event')) return 'Active Events';
-    if (n.includes('all') && n.includes('event')) return 'All Events';
-    if (n.includes('ra') && n.includes('inventory')) return 'RA Inventory';
+    if (n.includes('event')) return 'All Events';
+    if (n.includes('ra')) return 'RA Inventory';
     if (n.includes('config') && n.includes('calendar')) return 'Config Calendar View';
-    if (n.includes('config') && n.includes('failure')) return 'Config Failure';
+    if (n.includes('config')) return 'Config Failure';
     if (n.includes('customer')) return 'Customers';
     return name;
   };
@@ -328,22 +328,32 @@ function mapLinks(data: any[]): LinkData[] {
 function mapEvents(data: any[]): EventData[] {
   return data.map(row => ({
     eventId: getStr(row, ['EVENT_ID', 'Event ID']),
-    eventType: getStr(row, ['EVENT_TYPE', 'Event Type']),
-    deviceName: getStr(row, ['DEVICE_NAME', 'Device Name']),
-    ip: getStr(row, ['IP', 'IP Address']),
+    eventType: getStr(row, ['EVENT_TYPE', 'Event Type', 'Event Ty']),
+    deviceName: getStr(row, ['DEVICE_NAME', 'Device Name', 'Node']),
+    ip: getStr(row, ['IP', 'IP Address', 'IP Addre']),
     customer: getStr(row, ['CUSTOMER', 'Customer']),
     severity: (getStr(row, ['SEVERITY', 'Severity']).toUpperCase() || 'MINOR') as any,
-    startTime: getStr(row, ['START_TIME', 'FIRST_OCCURRENCE', 'Start Time']),
+    startTime: getStr(row, ['START_TIME', 'FIRST_OCCURRENCE', 'Start Time', 'Date', 'First Event Time']),
     age: getStr(row, ['AGE', 'Age']),
-    lastUpdate: getStr(row, ['LAST_UPDATE', 'Last Update']),
+    lastUpdate: getStr(row, ['LAST_UPDATE', 'Last Update', 'Last Event Time']),
     rootCause: getStr(row, ['ROOT_CAUSE', 'Root Cause']),
     category: getStr(row, ['CATEGORY', 'Category']),
     status: getStr(row, ['STATUS', 'ACTIVE', 'Status']),
-    firstOccurrence: getStr(row, ['FIRST_OCCURRENCE', 'First Occurrence']),
+    firstOccurrence: getStr(row, ['FIRST_OCCURRENCE', 'First Occurrence', 'First Event Time']),
     clearTime: getStr(row, ['CLEAR_TIME', 'Clear Time']),
-    faultName: getStr(row, ['FAULT_NAME', 'Fault Name']),
+    faultName: getStr(row, ['FAULT_NAME', 'Fault Name', 'Issue']),
     os: getStr(row, ['OS']),
-    interface: getStr(row, ['INTERFACE', 'Interface']),
+    interface: getStr(row, ['INTERFACE', 'Interface', 'Resource']),
+    vendor: getStr(row, ['VENDOR', 'Vendor']),
+    location: getStr(row, ['LOCATION', 'Location']),
+    state: getStr(row, ['STATE', 'State']),
+    bandwidth: getStr(row, ['BANDWIDTH', 'Bandwidth']),
+    business: getStr(row, ['BUSINESS', 'Business']),
+    isPremium: getStr(row, ['PREMIUM', 'Premium']),
+    isSuppressed: getStr(row, ['SUPPRESSED', 'Suppressed', 'Suppress', 'Suppres']),
+    isGrouped: getStr(row, ['GROUPED', 'Grouped']),
+    srStatus: getStr(row, ['SR_STATUS', 'SR Status']),
+    srNumber: getStr(row, ['SR_NUMBER', 'SR Number', 'Ticket Number', 'SR Numb', 'NSTT Nu']),
   }));
 }
 
@@ -376,12 +386,17 @@ function mapConfigCalendar(data: any[]): ConfigCalendarData[] {
 
 function mapConfigFailure(data: any[]): ConfigFailureData[] {
   return data.map(row => ({
-    deviceName: getStr(row, ['device_name', 'Device Name']),
-    deviceType: getStr(row, ['device_type', 'Device Type']),
-    scanType: (getValue(row, ['scan_type', 'Scan Type']) || '') as any,
-    failureReason: getStr(row, ['failure_reason', 'Failure Reason']),
-    status: 'FAILED',
-    configurationProfile: getStr(row, ['configuration_profile', 'Configuration Profile']),
+    ...row,
+    deviceName: getStr(row, ['device_name', 'Device Name', 'DeviceName', 'ip_address', 'Link IP']),
+    ipAddress: getStr(row, ['ip_address', 'Link IP', 'IP Address', 'LOOPBACK_IP', 'Loopback IP']),
+    vendor: getStr(row, ['vendor', 'VENDOR']),
+    make: getStr(row, ['make', 'MAKE']),
+    osName: getStr(row, ['os_name', 'OS_NAME', 'OS Version', 'osVersion']),
+    deviceType: getStr(row, ['device_type', 'Device Type', 'DEVICE_TYPE']),
+    scanType: (getValue(row, ['scan_type', 'Scan Type', 'SCAN_TYPE']) || '') as any,
+    failureReason: getStr(row, ['failure_reason', 'Failure Reason', 'FAILURE_REASON']),
+    status: getStr(row, ['status', 'Status', 'STATUS']) || 'FAILED',
+    configurationProfile: getStr(row, ['configuration_profile', 'Configuration Profile', 'CONFIGURATION_PROFILE']),
   }));
 }
 

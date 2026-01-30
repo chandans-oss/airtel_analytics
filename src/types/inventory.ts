@@ -96,6 +96,16 @@ export interface EventData {
   faultName?: string;
   os?: string;
   interface?: string;
+  vendor?: string;
+  location?: string;
+  state?: string;
+  bandwidth?: string;
+  business?: string;
+  isPremium?: string;
+  isSuppressed?: string;
+  isGrouped?: string;
+  srStatus?: string;
+  srNumber?: string;
 }
 
 export interface RAInventoryData {
@@ -123,11 +133,16 @@ export interface ConfigCalendarData {
 
 export interface ConfigFailureData {
   deviceName: string;
+  ipAddress: string;
+  vendor: string;
+  make: string;
+  osName: string;
   deviceType: string;
-  scanType: 'BACKUP' | 'PUSH' | 'DIFF';
+  scanType: string;
   failureReason: string;
-  status: 'FAILED';
+  status: string;
   configurationProfile: string;
+  [key: string]: any;
 }
 
 export interface CustomerData {

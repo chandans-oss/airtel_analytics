@@ -2,8 +2,10 @@ import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useInventoryStore } from '@/store/inventoryStore';
 import { UniversalChartRenderer } from './DistributionCharts';
+import { DrilldownHierarchy } from './DrilldownHierarchy';
+import { AnalyticsSet } from './InterdependentAnalytics';
 import { cn } from '@/lib/utils';
-import { Maximize2, Minimize2, Download, Zap, Shield, Map as MapIcon, Users, Cpu, TrendingUp, AlertTriangle, CheckCircle2, Settings2, Activity, Database, ExternalLink } from 'lucide-react';
+import { Maximize2, Minimize2, Download, Zap, Shield, Map as MapIcon, Users, Cpu, TrendingUp, AlertTriangle, CheckCircle2, Settings2, Activity, Database, ExternalLink, Gauge, Globe, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { exportToCSV } from '@/utils/exportUtils';
 import { ChartTypeSelector } from '../common/ChartTypeSelector';
 import type { LinkData, NodeData, ChartType } from '@/types/inventory';
@@ -17,9 +19,10 @@ interface SpecializedWidgetProps {
     className?: string;
     description?: string;
     fullWidth?: boolean;
+    exportData?: any[];
 }
 
-function SpecializedWidget({ title, data, chartType: initialChartType, source = 'links', height = 340, className, description, fullWidth }: SpecializedWidgetProps) {
+function SpecializedWidget({ title, data, chartType: initialChartType, source = 'links', height = 340, className, description, fullWidth, exportData }: SpecializedWidgetProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentChartType, setCurrentChartType] = useState<ChartType>(initialChartType);
     const [customTitle, setCustomTitle] = useState(title);
@@ -34,23 +37,22 @@ function SpecializedWidget({ title, data, chartType: initialChartType, source = 
     }, [initialChartType, title]);
 
     const handleExport = () => {
-        let exportData = data;
+        let dataToExport = exportData || data;
         let filename = `${customTitle.replace(/\s+/g, '_')}`;
 
-        if (source === 'nodes') {
-            exportData = getFilteredNodes();
+        if (source === 'nodes' && !exportData) {
+            dataToExport = getFilteredNodes();
             filename += '_Detail_List.csv';
-        } else if (source === 'links') {
-            exportData = getFilteredLinks();
+        } else if (source === 'links' && !exportData) {
+            dataToExport = getFilteredLinks();
             filename += '_Detail_List.csv';
         } else if (currentChartType === 'table') {
-            exportData = data;
             filename += '_Table_View.csv';
         } else {
             filename += '_Summary.csv';
         }
 
-        exportToCSV(exportData, filename);
+        exportToCSV(dataToExport, filename);
     };
 
     const handleContextMenu = (e: React.MouseEvent, name: string) => {
@@ -337,41 +339,9 @@ export function InventoryOpsModule() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [links]);
 
-    const redundancyData = useMemo(() => {
-        const counts = { 'Primary': 0, 'Secondary': 0, 'Single-Homed': 0 };
-        links.forEach(l => {
-            const v = (l as any).PRIMARY_OR_SECONDARY || (l as any).primarySecondary || 'Single-Homed';
-            if (v.toLowerCase().includes('primary')) counts['Primary']++;
-            else if (v.toLowerCase().includes('secondary')) counts['Secondary']++;
-            else counts['Single-Homed']++;
-        });
-        return [
-            { name: 'Primary', value: counts['Primary'], color: '#3b82f6' },
-            { name: 'Secondary', value: counts['Secondary'], color: '#10b981' },
-            { name: 'Single-Homed', value: counts['Single-Homed'], color: '#f59e0b' }
-        ];
-    }, [links]);
 
-    const nonRedundantSites = useMemo(() => {
-        return links
-            .filter(l => {
-                const v = (l as any).PRIMARY_OR_SECONDARY || (l as any).primarySecondary || '';
-                return !v.toLowerCase().includes('primary') && !v.toLowerCase().includes('secondary');
-            })
-            .slice(0, 15)
-            .map(l => ({
-                SiteName: (l as any).siteName || 'Unknown Site',
-                LSI: (l as any).linkId || l.lsi || 'N/A',
-                Risk: 'Single Homed'
-            }));
-    }, [links]);
 
-    const failoverScoreData = useMemo(() => {
-        const primary = links.filter(l => (l as any).PRIMARY_OR_SECONDARY?.toLowerCase().includes('primary')).length;
-        const secondary = links.filter(l => (l as any).PRIMARY_OR_SECONDARY?.toLowerCase().includes('secondary')).length;
-        const score = Math.round((secondary / (primary || 1)) * 100);
-        return [{ name: 'Score', value: score }];
-    }, [links]);
+
 
     const monitoringHoursData = useMemo(() => {
         return [
@@ -435,32 +405,47 @@ export function InventoryOpsModule() {
             }));
     }, [links]);
 
-    const pollingIssues = useMemo(() => {
+    const pollingIssueDetails = useMemo(() => {
         return links
             .filter(l => {
-                const isPingUp = l.pingStatus?.toUpperCase() === 'UP' || l.linkStatus === 'UP';
-                const isSnmpDown = l.snmpStatus?.toUpperCase() === 'DOWN' || (!l.scanType?.toUpperCase().includes('SNMP') && isPingUp);
+                const isPingUp = l.pingStatus?.toUpperCase() === 'UP' || l.linkStatus === 'UP' || (l as any).LINK_STATUS?.toUpperCase() === 'UP';
+                const isSnmpDown = l.snmpStatus?.toUpperCase() === 'DOWN' ||
+                    (l as any).SNMP_STATUS?.toUpperCase() === 'DOWN' ||
+                    (!l.scanType?.toUpperCase().includes('SNMP') && isPingUp);
                 return isPingUp && isSnmpDown;
-            })
-            .slice(0, 15)
-            .map(l => ({
-                Circuit: (l as any).linkId || l.lsi || 'N/A',
-                Status: `${l.pingStatus || 'UP'}/${l.snmpStatus || (l.scanType?.toUpperCase().includes('SNMP') ? 'UP' : 'DOWN')}`,
-                Issue: !l.scanType?.toUpperCase().includes('SNMP') ? 'ICMP Only Discovery' : 'SNMP Polling Timeout',
-                Severity: 'MAJOR'
-            }));
+            });
     }, [links]);
+
+    const pollingIssueChartData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        pollingIssueDetails.forEach(l => {
+            const reason = l.probableCause || (!l.scanType?.toUpperCase().includes('SNMP') ? 'ICMP Only Discovery' : 'SNMP Polling Timeout');
+            counts[reason] = (counts[reason] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [pollingIssueDetails]);
+
+
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <SpecializedWidget source="links" title="Ping & SNMP Status" description="Shows which links respond to ping and SNMP" data={healthData} chartType="donut" />
-                <SpecializedWidget source="links" title="Monitoring Coverage" description="Percentage of links actively monitored" data={monitoringData} chartType="donut" />
-                <SpecializedWidget source="links" title="SNMP Versions" description="SNMP protocol versions in use" data={snmpData} chartType="bar" />
-                <SpecializedWidget source="links" title="Polling Issues" description="Links with monitoring problems" data={pollingIssues} chartType="table" className="md:col-span-2" />
-                <SpecializedWidget source="links" title="Redundancy Split" description="Primary vs backup link distribution" data={redundancyData} chartType="bar" />
-                <SpecializedWidget source="links" title="Discovery Success" description="Successfully discovered devices" data={discoveryData} chartType="bar" />
-                <SpecializedWidget source="links" title="Single Homed Sites" description="Sites with no backup connection" data={nonRedundantSites} chartType="table" className="xl:col-span-3" />
+                <SpecializedWidget source="links" title="Ping & SNMP Status" description="Shows which links respond to ping and SNMP" data={healthData} exportData={links} chartType="donut" />
+                <SpecializedWidget source="links" title="Monitoring Coverage" description="Percentage of links actively monitored" data={monitoringData} exportData={links} chartType="donut" />
+                <SpecializedWidget source="links" title="SNMP Versions" description="SNMP protocol versions in use" data={snmpData} exportData={links} chartType="bar" />
+                <SpecializedWidget
+                    source="mixed"
+                    title="Polling Issues Analysis"
+                    description="Count of issues vs type"
+                    data={pollingIssueChartData}
+                    exportData={pollingIssueDetails}
+                    chartType="bar"
+                    className="md:col-span-2"
+                />
+                <SpecializedWidget source="links" title="Discovery Success" description="Successfully discovered devices" data={discoveryData} exportData={links} chartType="bar" />
+
             </div>
         </div>
     );
@@ -534,46 +519,45 @@ export function InventoryBusinessModule() {
         return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
     }, [links]);
 
-    const highRiskCustomers = useMemo(() => {
+    const serviceMatrix = useMemo(() => {
+        const counts: Record<string, number> = {};
+        links.forEach(l => {
+            const v = l.serviceFlavor || 'Other';
+            counts[v] = (counts[v] || 0) + 1;
+        });
+        const total = links.length || 1;
+        return Object.entries(counts).map(([Service, Penetration]) => ({
+            Service,
+            Penetration,
+            MarketShare: `${Math.round((Penetration / total) * 100)}%`
+        })).sort((a, b) => b.Penetration - a.Penetration);
+    }, [links]);
+
+    const highRiskPremium = useMemo(() => {
         return links
             .filter(l => isPremiumLink(l) && l.linkStatus === 'DOWN')
             .slice(0, 20)
             .map(l => ({
-                Customer: l.customerName || 'N/A',
-                Region: l.region,
-                Circuit: (l as any).linkId || l.raNumber || 'N/A',
-                RiskLevel: 'CRITICAL'
+                Customer: l.customerName || 'Other',
+                Region: l.region || 'Unknown',
+                Circuit: l.linkId || l.raNumber || 'N/A',
+                Risk: 'CRITICAL'
             }));
     }, [links]);
 
-    const serviceCustomerMatrixMap = useMemo(() => {
-        const result: any[] = [];
-        const flavorMap: Record<string, number> = {};
-        links.forEach(l => {
-            const flavor = l.serviceFlavor || 'Other';
-            flavorMap[flavor] = (flavorMap[flavor] || 0) + 1;
-        });
-        Object.entries(flavorMap).forEach(([flavor, count]) => {
-            result.push({
-                Service: flavor,
-                Penetration: count,
-                MarketShare: `${Math.round((count / links.length) * 100)}%`
-            });
-        });
-        return result;
-    }, [links]);
+
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <SpecializedWidget source="links" title="Customer Distribution" description="Top customers by link count" data={customerDist} chartType="bar" />
-                <SpecializedWidget source="links" title="Service Flavors" description="Types of services deployed" data={flavorDist} chartType="pie" />
-                <SpecializedWidget source="links" title="Premium Breakdown" description="Premium vs standard service split" data={premiumTier} chartType="donut" />
-                <SpecializedWidget source="links" title="Product Mix" description="Distribution of product types" data={serviceTypeDist} chartType="bar" />
-                <SpecializedWidget source="links" title="SAM Allocation" description="Service account manager assignments" data={samAllocation} chartType="bar" />
-                <SpecializedWidget source="links" title="VIP Regions" description="Regions with most premium customers" data={regionPremiumDist} chartType="bar" />
-                <SpecializedWidget source="links" title="Service/Customer Matrix" description="Services used by each customer" data={serviceCustomerMatrixMap} chartType="table" />
-                <SpecializedWidget source="links" title="High-Risk Premium Clients" description="Premium customers with outages" data={highRiskCustomers} chartType="table" className="xl:col-span-2" />
+                <SpecializedWidget source="links" title="Customer Distribution" description="Top customers by link count" data={customerDist} exportData={links} chartType="bar" />
+                <SpecializedWidget source="links" title="Service Flavors" description="Types of services deployed" data={flavorDist} exportData={links} chartType="pie" />
+                <SpecializedWidget source="links" title="Premium Breakdown" description="Premium vs standard service split" data={premiumTier} exportData={links} chartType="donut" />
+                <SpecializedWidget source="links" title="Product Mix" description="Distribution of product types" data={serviceTypeDist} exportData={links} chartType="bar" />
+                <SpecializedWidget source="links" title="SAM Allocation" description="Service account manager assignments" data={samAllocation} exportData={links} chartType="bar" />
+                <SpecializedWidget source="links" title="VIP Regions" description="Regions with most premium customers" data={regionPremiumDist} exportData={links.filter(l => isPremiumLink(l))} chartType="bar" />
+                <SpecializedWidget source="links" title="Service/Customer Matrix" description="Product penetration and market share" data={serviceMatrix} exportData={links} chartType="table" />
+                <SpecializedWidget source="links" title="High-Risk Premium Clients" description="Premium circuits currently out of service" data={highRiskPremium} exportData={links.filter(l => isPremiumLink(l) && l.linkStatus === 'DOWN')} chartType="table" className="xl:col-span-2" />
             </div>
         </div>
     );
@@ -631,10 +615,10 @@ export function InventoryGeographyModule() {
     return (
         <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <SpecializedWidget source="links" title="Regional Distribution" description="Links per region" data={regionDist} chartType="bar" />
-                <SpecializedWidget source="links" title="Outages by Region" description="Regions with most failures" data={regionOutageDist} chartType="bar" />
-                <SpecializedWidget source="links" title="State Density" description="Link concentration by state" data={stateDensity} chartType="table" />
-                <SpecializedWidget source="links" title="Field Ops Priority" description="Critical sites needing attention" data={priorityMapData} chartType="table" className="xl:col-span-3" />
+                <SpecializedWidget source="links" title="Regional Distribution" description="Links per region" data={regionDist} exportData={links} chartType="bar" />
+                <SpecializedWidget source="links" title="Outages by Region" description="Regions with most failures" data={regionOutageDist} exportData={links.filter(l => l.linkStatus === 'DOWN')} chartType="bar" />
+                <SpecializedWidget source="links" title="State Density" description="Link concentration by state" data={stateDensity} exportData={links} chartType="table" />
+                <SpecializedWidget source="links" title="Field Ops Priority" description="Critical sites needing attention" data={priorityMapData} exportData={links.filter(l => l.linkStatus === 'DOWN')} chartType="table" className="xl:col-span-3" />
             </div>
         </div>
     );
@@ -688,7 +672,6 @@ export function InventoryTechModule() {
 }
 
 // --- 5. PERFORMANCE & CAPACITY MODULE ---
-
 
 // --- 6. INVENTORY LIFECYCLE & RESOURCES MODULE ---
 export function InventoryLifeCycleModule() {
@@ -961,19 +944,40 @@ export function InventoryLifeCycleModule() {
                     Monitoring & Status
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <SpecializedWidget source="nodes" title="Polling Protocols" description="Monitoring methods in use" data={pollingDist} chartType="donut" />
-                    <SpecializedWidget source="mixed" title="Resource Polling Status" description="Monitoring configuration status" data={resourceStatus} chartType="table" />
-                    <SpecializedWidget source="links" title="Outage Correlation" description="Outages by region and time" data={outageCorrelation} chartType="bar" className="xl:col-span-1" />
+                    <SpecializedWidget source="nodes" title="Polling Protocols" description="Monitoring methods in use" data={pollingDist} exportData={nodes} chartType="donut" />
+                    <SpecializedWidget source="mixed" title="Resource Polling Status" description="Monitoring configuration status" data={resourceStatus} exportData={resourceStatus} chartType="table" />
+                    <SpecializedWidget source="links" title="Outage Correlation" description="Outages by region and time" data={outageCorrelation} exportData={links.filter(l => l.linkStatus === 'DOWN')} chartType="bar" className="xl:col-span-1" />
+                    <SpecializedWidget source="nodes" title="SNMP Polling Exceptions" description="Devices responding to Ping but failing SNMP" data={pollingIssues} exportData={nodes.filter(n => (n.pingStatus?.toUpperCase() === 'UP' || n.status === 'UP') && (!n.snmpStatus || n.snmpStatus.toUpperCase() === 'DOWN'))} chartType="table" className="xl:col-span-3" />
                 </div>
             </div>
 
-            {/* SNMP Polling Exceptions */}
-            <div>
-                <h2 className="text-lg font-bold uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-orange-500" />
-                    Polling Exceptions
-                </h2>
-                <SpecializedWidget source="nodes" title="SNMP Polling Exceptions" description="Devices with SNMP issues" data={pollingIssues} chartType="table" fullWidth />
+        </div>
+    );
+}
+
+export function InventoryNodesModule() {
+    const { nodeHierarchyLevels } = useInventoryStore();
+    return (
+        <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
+            <AnalyticsSet title="Node Inventory Analytics" type="nodes" levels={nodeHierarchyLevels} />
+            <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-md p-6 shadow-xl min-h-[600px] flex flex-col">
+                <div className="pr-2 flex-1">
+                    <DrilldownHierarchy entityType="nodes" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export function InventoryLinksModule() {
+    const { linkHierarchyLevels } = useInventoryStore();
+    return (
+        <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
+            <AnalyticsSet title="Link Inventory Analytics" type="links" levels={linkHierarchyLevels} />
+            <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-md p-6 shadow-xl min-h-[600px] flex flex-col">
+                <div className="pr-2 flex-1">
+                    <DrilldownHierarchy entityType="links" />
+                </div>
             </div>
         </div>
     );

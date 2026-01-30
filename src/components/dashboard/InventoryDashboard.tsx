@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useInventoryStore } from '@/store/inventoryStore';
 
@@ -14,7 +14,10 @@ import {
   InventoryBusinessModule,
   InventoryGeographyModule,
   InventoryTechModule,
-  InventoryLifeCycleModule
+  InventoryLifeCycleModule,
+  InventoryNodesModule,
+  InventoryLinksModule
+
 } from './InventorySpecializedDashboards';
 
 
@@ -35,6 +38,17 @@ export function InventoryDashboard() {
   } = useInventoryStore();
   const [tableType, setTableType] = useState<'nodes' | 'links'>('nodes');
 
+  useEffect(() => {
+    if (selectedSubModule === 'nodes') {
+      setTableType('nodes');
+      if (activeTopologyView !== 'nodes') setActiveTopologyView('nodes');
+    }
+    if (selectedSubModule === 'links') {
+      setTableType('links');
+      if (activeTopologyView !== 'links') setActiveTopologyView('links');
+    }
+  }, [selectedSubModule, activeTopologyView, setActiveTopologyView]);
+
   const hasData = nodes.length > 0 || links.length > 0;
 
   if (!hasData) {
@@ -46,7 +60,7 @@ export function InventoryDashboard() {
         <div className="text-center">
           <h2 className="text-xl font-semibold">Initializing Unified Dashboard</h2>
           <p className="mt-2 text-muted-foreground">
-            Loading Airtel Network Inventory & Events data...
+            Loading Infrastructure Network Inventory & Events data...
           </p>
         </div>
       </div>
@@ -67,29 +81,10 @@ export function InventoryDashboard() {
         // Handle Inventory Sub-modules
         if (selectedModule === 'inventory') {
           switch (selectedSubModule) {
-            case 'ops': return <InventoryOpsModule />;
-            case 'business': return <InventoryBusinessModule />;
-            case 'geography': return <InventoryGeographyModule />;
-            case 'tech': return <InventoryTechModule />;
-            case 'lifecycle': return <InventoryLifeCycleModule />;
+            case 'nodes': return <InventoryNodesModule />;
+            case 'links':
             default:
-              return (
-                <div className="flex flex-col gap-4">
-                  {/* Row 0: Interdependent Business Intelligence (Moved to Top) */}
-                  <div className="w-full">
-                    <InterdependentAnalytics />
-                  </div>
-
-                  {/* Row 1: Network Topology Explorer (Full Width) */}
-                  <div className="w-full">
-                    <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-md p-6 shadow-xl min-h-[600px] flex flex-col">
-                      <div className="pr-2 flex-1">
-                        <DrilldownHierarchy entityType={activeTopologyView} setEntityType={setActiveTopologyView} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
+              return <InventoryLinksModule />;
           }
         }
         return null;

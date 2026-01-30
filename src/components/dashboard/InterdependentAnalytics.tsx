@@ -25,7 +25,7 @@ interface HierarchyLevel {
     expectedValues?: string[];
 }
 
-function AnalyticsSet({ title, type, levels }: AnalyticsSetProps) {
+export function AnalyticsSet({ title, type, levels }: AnalyticsSetProps) {
     const { toggleFilter } = useInventoryStore();
     const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
     const [widgetSizes, setWidgetSizes] = useState<Record<string, { span: number; height: number }>>({});

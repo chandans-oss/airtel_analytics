@@ -16,8 +16,9 @@ import {
 import { cn } from '@/lib/utils';
 import {
     BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
-    PieChart, Pie, Cell, CartesianGrid
+    PieChart, Pie, Cell, CartesianGrid, LabelList
 } from 'recharts';
+import { exportToCSV } from '@/utils/exportUtils';
 
 const COLORS = {
     primary: 'hsl(var(--primary))',
@@ -151,6 +152,22 @@ export function RADashboard() {
         );
     }, [raInventory, searchTerm]);
 
+    // 9. LSI vs Health Status
+    const lsiHealthData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        raInventory.forEach(ra => {
+            const status = ra.status || 'Unknown';
+            const lsis = (ra.linkIds || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+            const weight = lsis.length > 0 ? lsis.length : 1;
+            counts[status] = (counts[status] || 0) + weight;
+        });
+        return Object.entries(counts).map(([name, value]) => ({
+            name,
+            value,
+            color: STATUS_COLORS[name] || `hsl(${Math.random() * 360}, 70%, 50%)`
+        })).sort((a, b) => b.value - a.value);
+    }, [raInventory]);
+
     return (
         <div className="space-y-4 animate-in fade-in duration-700">
             {/* --- HEADER --- */}
@@ -215,14 +232,17 @@ export function RADashboard() {
                 {activeTab === 'overview' && (
                     <div className="grid grid-cols-12 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                         {/* Primary Charts */}
-                        <div className="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm flex flex-col h-[280px]">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                                         <Package size={14} className="text-primary" />
                                         Product Distribution
                                     </h3>
-                                    <button className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                    <button
+                                        onClick={() => exportToCSV(filteredRAs, 'RA_Product_Distribution')}
+                                        className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                                    >
                                         <Download size={12} />
                                     </button>
                                 </div>
@@ -259,7 +279,10 @@ export function RADashboard() {
                                         <Map size={14} className="text-blue-500" />
                                         Regional Footprint
                                     </h3>
-                                    <button className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                    <button
+                                        onClick={() => exportToCSV(filteredRAs, 'RA_Regional_Footprint')}
+                                        className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                                    >
                                         <Download size={12} />
                                     </button>
                                 </div>
@@ -295,39 +318,6 @@ export function RADashboard() {
                             </div>
                         </div>
 
-                        {/* Secondary Stats / Health */}
-                        <div className="col-span-12 lg:col-span-4 space-y-6">
-                            {/* Status Gauge */}
-                            <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm h-full flex flex-col">
-                                <h3 className="text-[10px] font-black uppercase tracking-widest mb-4">Allocation Efficiency</h3>
-                                <div className="space-y-4 flex-1">
-                                    {statusData.map((s, i) => (
-                                        <div key={s.name} className="space-y-2">
-                                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                                <span className="uppercase text-muted-foreground">{s.name}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-foreground">{s.value}</span>
-                                                    <span className="px-1.5 py-0.5 rounded bg-muted text-[8px] opacity-70">
-                                                        {Math.round((s.value / stats.total) * 100)}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="h-2 w-full bg-muted/40 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-1000"
-                                                    style={{
-                                                        width: `${(s.value / stats.total) * 100}%`,
-                                                        backgroundColor: s.color,
-                                                        boxShadow: `0 0 10px ${s.color}40`
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 )}
 
@@ -340,7 +330,10 @@ export function RADashboard() {
                                     <Users size={16} className="text-primary" />
                                     Top Clients by Volume
                                 </h3>
-                                <button className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                <button
+                                    onClick={() => exportToCSV(filteredRAs, 'RA_Top_Clients_By_Volume')}
+                                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                                >
                                     <Download size={14} />
                                 </button>
                             </div>
@@ -372,7 +365,10 @@ export function RADashboard() {
                                     <TrendingUp size={16} className="text-emerald-500" />
                                     Top Clients by Bandwidth Allocation
                                 </h3>
-                                <button className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all">
+                                <button
+                                    onClick={() => exportToCSV(filteredRAs, 'RA_Top_Clients_By_Bandwidth')}
+                                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                                >
                                     <Download size={14} />
                                 </button>
                             </div>
@@ -402,86 +398,54 @@ export function RADashboard() {
 
             </div>
 
-            {/* --- DETAILED DATA TABLE --- */}
-            <div className="rounded-2xl border border-border/50 bg-card shadow-lg overflow-hidden flex flex-col">
-                <div className="px-6 py-4 border-b border-border/50 bg-muted/20 flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
-                        <FileText size={14} className="text-primary" />
-                        Master RA Ledger
-                    </h3>
-                    <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-widest">
-                        {filteredRAs.length} Items found
-                    </span>
+            {/* --- LSI vs HEALTH STATUS PLOT --- */}
+            <div className="rounded-2xl border border-border/50 bg-card shadow-lg p-6 flex flex-col h-[450px]">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                            <Zap size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">LSI vs Health Status</h3>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Distribution of allocated LSIs across current health states</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => exportToCSV(lsiHealthData, 'LSI_Health_status_Export')}
+                        className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                    >
+                        <Download size={14} />
+                        Export LSI Summary
+                    </button>
                 </div>
 
-                <div className="overflow-auto max-h-[600px] custom-scrollbar">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-md border-b border-border/50">
-                            <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">
-                                <th className="px-6 py-4">RA Reference</th>
-                                <th className="px-6 py-4">Health Status</th>
-                                <th className="px-6 py-4">Type</th>
-                                <th className="px-6 py-4">Client Portfolio</th>
-                                <th className="px-6 py-4">Region</th>
-                                <th className="px-6 py-4">Allocation</th>
-                                <th className="px-6 py-4 text-right">Contract</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/10">
-                            {filteredRAs.map((ra, idx) => (
-                                <tr key={idx} className="group hover:bg-primary/[0.03] transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-primary group-hover:underline cursor-pointer tracking-wide">{ra.raNumber}</span>
-                                            <span className="text-[9px] text-muted-foreground opacity-60 font-medium">{ra.linkIds || 'LSI Not Linked'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="h-1.5 w-1.5 rounded-full"
-                                                style={{ backgroundColor: STATUS_COLORS[ra.status] || COLORS.blue }}
-                                            />
-                                            <span className={cn(
-                                                "text-[10px] font-black uppercase tracking-tight",
-                                                ra.status === 'Active' ? "text-emerald-500" :
-                                                    ra.status === 'Pending' ? "text-orange-500" : "text-muted-foreground"
-                                            )}>
-                                                {ra.status}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-muted/40 w-fit">
-                                            <TrendingUp size={10} className="text-muted-foreground" />
-                                            <span className="text-[9px] font-bold uppercase text-foreground/70">{ra.type}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold text-foreground/90 leading-tight">{ra.customerName}</span>
-                                            <span className="text-[9px] font-black text-muted-foreground/60">{ra.customerCode}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{ra.region || '—'}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-1.5">
-                                                <Zap size={10} className="text-primary/60" />
-                                                <span className="text-[10px] font-black text-foreground">{ra.bandwidth}</span>
-                                            </div>
-                                            <span className="text-[9px] font-bold text-muted-foreground/60 truncate max-w-[100px]">{ra.product}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-[10px] font-bold text-muted-foreground italic">{ra.contract || 'O.O.C'}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="flex-1 w-full relative pt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={lsiHealthData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                            <XAxis
+                                dataKey="name"
+                                tick={{ fontSize: 10, fontWeight: '800', fill: 'hsl(var(--foreground))' }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis
+                                tick={{ fontSize: 10, fontWeight: '700', fill: 'hsl(var(--foreground))' }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <Tooltip
+                                cursor={{ fill: 'hsl(var(--primary)/5%)' }}
+                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }}
+                            />
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
+                                {lsiHealthData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                                <LabelList dataKey="value" position="top" style={{ fontSize: '12px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} offset={10} />
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>

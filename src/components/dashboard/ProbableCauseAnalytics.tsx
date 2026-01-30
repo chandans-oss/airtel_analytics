@@ -7,25 +7,34 @@ import {
     Activity,
     Zap,
     Network,
-    Clock,
-    Ticket,
     Download,
     Lightbulb,
     Cpu,
-    ArrowLeft,
-    Info
+    Search,
+    Server,
+    Globe,
+    Medal,
+    ShieldCheck,
+    Wrench,
+    Factory,
+    Clock,
+    Ticket,
+    AlertCircle
 } from 'lucide-react';
 import {
+    CartesianGrid,
+    PieChart,
+    Pie,
+    LabelList,
+    ResponsiveContainer,
     BarChart,
     Bar,
     XAxis,
     YAxis,
     Tooltip,
-    ResponsiveContainer,
     Cell,
     LineChart,
-    Line,
-    CartesianGrid
+    Line
 } from 'recharts';
 
 import {
@@ -37,22 +46,27 @@ import {
 
 export function ProbableCauseAnalytics({ filteredContext = false }: { filteredContext?: boolean }) {
     const { getFilteredEvents, allEvents, setSelectedModule } = useInventoryStore();
-    const [timeRange, setTimeRange] = useState<'3H' | '24H' | '7D'>('24H');
+    const [timeRange, setTimeRange] = useState<'3H' | '24H' | '7D' | '30D' | 'ALL'>('ALL');
 
     // Choose data source and apply time filter
     const rawEvents = filteredContext ? getFilteredEvents() : allEvents;
 
     const events = useMemo(() => {
+        if (timeRange === 'ALL') return rawEvents;
+
         const now = new Date();
         const cutoff = new Date(now);
 
         if (timeRange === '3H') cutoff.setHours(now.getHours() - 3);
         else if (timeRange === '24H') cutoff.setHours(now.getHours() - 24);
         else if (timeRange === '7D') cutoff.setDate(now.getDate() - 7);
+        else if (timeRange === '30D') cutoff.setDate(now.getDate() - 30);
 
         return rawEvents.filter(e => {
             if (!e.startTime) return false;
-            return new Date(e.startTime) >= cutoff;
+            // Handle multiple date formats safely
+            const eventDate = new Date(e.startTime);
+            return !isNaN(eventDate.getTime()) && eventDate >= cutoff;
         });
     }, [rawEvents, timeRange]);
 
@@ -60,12 +74,13 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
     const probableCauses = useMemo(() => {
         // Broadened keywords to catch more data
         const causes = [
-            { id: 'link', label: 'Link/Interface Failure', count: 0, icon: Network, color: 'hsl(320, 70%, 55%)', keywords: ['LINK', 'INTERFACE', 'PORT', 'DOWN', 'FLAP', 'ETH', 'GIGABIT'] },
-            { id: 'bgp', label: 'BGP/Routing Issues', count: 0, icon: Zap, color: 'hsl(38, 92%, 50%)', keywords: ['BGP', 'OSPF', 'NEIGHBOR', 'PEER', 'ROUTE', 'ADHOC'] },
-            { id: 'hard', label: 'Hardware/Environment', count: 0, icon: Cpu, color: 'hsl(12, 85%, 55%)', keywords: ['CARD', 'CHASSIS', 'FAN', 'POWER', 'TEMP', 'VOLTAGE', 'HARDWARE'] },
-            { id: 'reach', label: 'Reachability/Ping', count: 0, icon: Activity, color: 'hsl(210, 100%, 55%)', keywords: ['PING', 'REACHABILITY', 'TIMEOUT', 'UNREACHABLE', 'ICMP', 'SNMP'] },
-            { id: 'config', label: 'Config/System', count: 0, icon: ShieldAlert, color: 'hsl(280, 70%, 55%)', keywords: ['CONFIG', 'MISMATCH', 'ERROR', 'SYSTEM', 'REBOOT', 'RESTART'] },
-            { id: 'other', label: 'Other Anomalies', count: 0, icon: AlertTriangle, color: 'hsl(215, 15%, 65%)', keywords: [] } // Catch-all
+            { id: 'control', label: 'SD-WAN Control Plane', count: 0, icon: ShieldAlert, color: 'hsl(280, 85%, 60%)', keywords: ['CONTROL', 'TLOC', 'OMP', 'CONNECTION'] },
+            { id: 'reach', label: 'Reachability & SNMP', count: 0, icon: Globe, color: 'hsl(210, 100%, 50%)', keywords: ['PING', 'REACHABILITY', 'ICMP', 'SNMP', 'TIMEOUT', 'RESPONDING'] },
+            { id: 'routing', label: 'Routing & Peering', count: 0, icon: Zap, color: 'hsl(38, 92%, 50%)', keywords: ['BGP', 'BFD', 'PEERING', 'NEIGHBOR', 'SESSIONS'] },
+            { id: 'link', label: 'Link & Inteface', count: 0, icon: Network, color: 'hsl(160, 80%, 45%)', keywords: ['LINK DOWN', 'OPER-STATE', 'ADMIN-STATE', 'INTERFACE', 'PORT'] },
+            { id: 'system', label: 'Compute & System', count: 0, icon: Cpu, color: 'hsl(12, 85%, 55%)', keywords: ['CPU', 'MEMORY', 'USAGE', 'LOAD', 'THRESHOLD', 'CERTIFICATE'] },
+            { id: 'ops', label: 'Administrative/Ops', count: 0, icon: Server, color: 'hsl(215, 20%, 60%)', keywords: ['CLEARED', 'UPLOADED', 'SERIAL FILE', 'ALARM'] },
+            { id: 'other', label: 'Other Anomalies', count: 0, icon: AlertTriangle, color: 'hsl(215, 15%, 65%)', keywords: [] }
         ];
 
         let unclassifiedcount = 0;
@@ -131,12 +146,26 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
 
     const businessHoursData = useMemo(() => {
         const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
-        return hours.map(h => ({
-            name: h,
-            events: Math.floor(Math.random() * 50) + 10,
-            critical: Math.floor(Math.random() * 10)
-        }));
-    }, []);
+        const now = new Date();
+
+        return hours.map(h => {
+            const [hourStr] = h.split(':');
+            const targetHour = parseInt(hourStr, 10);
+
+            const count = events.filter(e => {
+                const d = new Date(e.startTime || '');
+                return d.getHours() >= targetHour && d.getHours() < targetHour + 4;
+            }).length;
+
+            const critical = events.filter(e => {
+                const d = new Date(e.startTime || '');
+                return (d.getHours() >= targetHour && d.getHours() < targetHour + 4) &&
+                    (e.severity === 'CRITICAL' || e.severity === 'MAJOR');
+            }).length;
+
+            return { name: h, events: count, critical };
+        });
+    }, [events]);
 
     const impactedDomains = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -156,6 +185,101 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
         return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
     }, [events]);
 
+    // --- NEW ANALYTICAL DATASETS ---
+
+    // 1. Service Assurance Matrix (Premium vs Standard)
+    const serviceImpactData = useMemo(() => {
+        const premiumCount = events.filter(e => e.isPremium?.toLowerCase().includes('yes')).length;
+        const standardCount = events.length - premiumCount;
+        return [
+            { name: 'Premium Segment', value: premiumCount, color: 'hsl(var(--primary))' },
+            { name: 'Standard Segment', value: standardCount, color: 'hsl(var(--muted-foreground))' }
+        ];
+    }, [events]);
+
+    // 2. Ticket Maturity (SR Status)
+    const ticketMaturityData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        events.forEach(e => {
+            const status = e.srStatus || 'No Ticket';
+            counts[status] = (counts[status] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [events]);
+
+    // 3. Operational Efficiency (Automation Ratio)
+    const opsEfficiency = useMemo(() => {
+        const grouped = events.filter(e => e.isGrouped?.toLowerCase().includes('yes')).length;
+        const suppressed = events.filter(e => e.isSuppressed?.toLowerCase().includes('yes')).length;
+        const total = events.length || 1;
+
+        return [
+            { label: 'Network Grouping', value: Math.round((grouped / total) * 100) },
+            { label: 'Noise Reduction', value: Math.round((suppressed / total) * 100) },
+        ];
+    }, [events]);
+
+    // 4. Vendor Reliability Scorecard
+    const vendorReliability = useMemo(() => {
+        const counts: Record<string, number> = {};
+        events.forEach(e => {
+            const vendor = e.vendor || 'Unknown';
+            counts[vendor] = (counts[vendor] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 6);
+    }, [events]);
+
+    // 5. High-Level KPI overrides
+    const tacticalKPIs = useMemo(() => {
+        const premiumAtRisk = events.filter(e => (e.severity === 'CRITICAL' || e.severity === 'MAJOR') && e.isPremium?.toLowerCase().includes('yes')).length;
+        const openTickets = events.filter(e => e.srStatus && !['Closed', 'Resolved'].includes(e.srStatus)).length;
+
+        return [
+            { name: 'Premium Impact', value: premiumAtRisk, icon: Medal, color: 'hsl(45, 93%, 47%)', sub: 'Critical SLAs' },
+            { name: 'NOC Silence', value: `${opsEfficiency[1].value}%`, icon: ShieldCheck, color: 'hsl(142, 69%, 58%)', sub: 'Suppression Rate' },
+            { name: 'Active Tickets', value: openTickets, icon: Wrench, color: 'hsl(217, 91%, 60%)', sub: 'Pending MTTR' },
+            { name: 'Network Vendors', value: vendorReliability.length, icon: Factory, color: 'hsl(262, 83%, 58%)', sub: 'Platform Context' },
+        ];
+    }, [events, opsEfficiency, vendorReliability]);
+
+    // 6. Regional Impact Heatmap
+    const regionalData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        events.forEach(e => {
+            const state = e.state || 'Unknown';
+            counts[state] = (counts[state] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
+    }, [events]);
+
+    // 7. Severity Distribution (Major, Critical, Minor)
+    const severityDistribution = useMemo(() => {
+        const counts = {
+            CRITICAL: 0,
+            MAJOR: 0,
+            MINOR: 0,
+        };
+        events.forEach(e => {
+            const sev = (e.severity || '').toUpperCase();
+            if (sev.includes('CRIT')) counts.CRITICAL++;
+            else if (sev.includes('MAJ')) counts.MAJOR++;
+            else counts.MINOR++;
+        });
+
+        return [
+            { name: 'Critical', value: counts.CRITICAL, color: 'rgb(239, 68, 68)' },
+            { name: 'Major', value: counts.MAJOR, color: 'rgb(249, 115, 22)' },
+            { name: 'Minor', value: counts.MINOR, color: 'rgb(59, 130, 246)' },
+        ];
+    }, [events]);
+
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
             <div className="flex items-center justify-between mb-4">
@@ -169,7 +293,7 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
                 </div>
 
                 <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 border border-border/50">
-                    {(['3H', '24H', '7D'] as const).map((r) => (
+                    {(['3H', '24H', '7D', '30D', 'ALL'] as const).map((r) => (
                         <button
                             key={r}
                             onClick={() => setTimeRange(r)}
@@ -178,24 +302,30 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
                                 : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                                 }`}
                         >
-                            {r === '24H' ? 'Today' : r}
+                            {r === '24H' ? 'Today' : r === 'ALL' ? 'Total' : r}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* KPI Cards (Shared) */}
+            {/* KPI Cards (Tactical) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {ticketStats.map((stat) => (
-                    <div key={stat.name} className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-muted" style={{ color: stat.color }}>
-                                <stat.icon size={18} />
+                {tacticalKPIs.map((stat) => (
+                    <div key={stat.name} className="group relative rounded-xl border border-border/50 bg-card/50 p-4 flex items-center justify-between shadow-sm hover:border-primary/20 transition-all overflow-hidden">
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="p-2.5 rounded-xl bg-muted group-hover:bg-primary/5 transition-colors" style={{ color: stat.color }}>
+                                <stat.icon size={20} />
                             </div>
                             <div>
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground">{stat.name}</p>
-                                <span className="text-2xl font-black">{stat.value}</span>
+                                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{stat.name}</p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black tabular-nums">{stat.value}</span>
+                                    <span className="text-[9px] font-bold opacity-60 uppercase">{stat.sub}</span>
+                                </div>
                             </div>
+                        </div>
+                        <div className="absolute -right-2 -bottom-2 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity rotate-12">
+                            <stat.icon size={60} strokeWidth={3} />
                         </div>
                     </div>
                 ))}
@@ -203,53 +333,189 @@ export function ProbableCauseAnalytics({ filteredContext = false }: { filteredCo
 
             {/* CONDITIONAL LAYOUT */}
             {!filteredContext ? (
-                // --- MAIN DASHBOARD LAYOUT (New Charts) ---
                 <div className="space-y-6">
-                    {/* Row 1: Time Series Analysis */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <EventsTrendLineChart data={events} timeRange={timeRange} />
-                        <SeverityAreaChart data={events} timeRange={timeRange} />
-                    </div>
-
-                    {/* Row 2: Flow & Correlation Analysis */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <CausalFlowSankey data={events} />
-                        <MultiDimParallelSankey data={events} />
-                    </div>
-
-                    {/* Row 3: Existing Probable Cause (Enhanced Context) */}
-                    <div className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
-                            <Activity size={16} className="text-primary" />
-                            Probable Cause Distribution
-                        </h3>
-                        {probableCauses.length > 0 ? (
-                            <div className="h-[300px] w-full">
+                    {/* Row 1: Tactical Reliability Analysis */}
+                    <div className="grid grid-cols-12 gap-6">
+                        {/* Vendor Reliability */}
+                        <div className="col-span-12 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                                    <Factory size={16} className="text-primary" />
+                                    Vendor Reliability Scorecard
+                                </h3>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Fault intensity by platform</p>
+                            </div>
+                            <div className="h-[280px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={probableCauses} layout="vertical" margin={{ left: 40, right: 30, top: 10, bottom: 10 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis
-                                            dataKey="label"
-                                            type="category"
-                                            width={180}
-                                            tick={{ fontSize: 10, fontWeight: '700', fill: 'hsl(var(--foreground))' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/2%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '11px' }} />
-                                        <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={24}>
-                                            {probableCauses.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                    <BarChart data={vendorReliability} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                                        <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: '700' }} axisLine={false} tickLine={false} />
+                                        <YAxis hide />
+                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/2%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }} />
+                                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={60}>
+                                            <LabelList dataKey="count" position="top" style={{ fontSize: '10px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} />
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
-                        ) : (
-                            <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground border border-dashed border-border/20 rounded-xl bg-muted/5">
-                                <Info size={24} className="mb-2 opacity-20" />
-                                <p className="text-xs font-medium">No correlation data matches keywords in this range</p>
-                                <p className="text-[10px] opacity-60 mt-1">Keywords: Link, BGP, Hardware, Reachability, Config</p>
+                        </div>
+                    </div>
+
+                    {/* Event Trends & Severity Composition */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <EventsTrendLineChart data={events} timeRange={timeRange} />
+                        <SeverityAreaChart data={events} timeRange={timeRange} />
+                    </div>
+
+                    {/* Row 2: Service & Resolution Matrix */}
+                    <div className="grid grid-cols-12 gap-6">
+                        {/* Ticket Maturity */}
+                        <div className="col-span-12 lg:col-span-4 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6">Resolution Maturity</h3>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={ticketMaturityData}
+                                            innerRadius={60}
+                                            outerRadius={90}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {ticketMaturityData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={`hsl(262, 80%, ${50 + index * 10}%)`} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
-                        )}
+                            <div className="mt-4 flex flex-wrap gap-2 text-[8px]">
+                                {ticketMaturityData.map((s, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/20">
+                                        <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(262, 80%, ${50 + i * 10}%)` }} />
+                                        <span className="font-black uppercase">{s.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Service Impact Segment */}
+                        <div className="col-span-12 lg:col-span-8 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
+                                <Medal size={16} className="text-amber-500" />
+                                Service Assurance Matrix
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[250px]">
+                                <div className="space-y-4 flex flex-col justify-center">
+                                    {serviceImpactData.map((seg, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/50 hover:bg-muted/30 transition-colors">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{seg.name}</span>
+                                                <span className="text-2xl font-black">{seg.value} Active Faults</span>
+                                            </div>
+                                            <div className="h-10 w-1 rounded-full shadow-[0_0_8px] shadow-current" style={{ backgroundColor: seg.color, color: seg.color }} />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="border-l border-border/50 pl-8 flex flex-col justify-center">
+                                    <div className="text-center mb-6">
+                                        <div className="text-5xl font-black text-primary drop-shadow-[0_0_15px_hsl(var(--primary)/30%)]">
+                                            {Math.round((events.filter(e => e.business?.includes('24*7')).length / (events.length || 1)) * 100)}%
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">24*7 Critical Support Mix</div>
+                                    </div>
+                                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                        <p className="text-[11px] font-medium leading-relaxed text-muted-foreground italic text-center">
+                                            Critical faults in the premium segment are prioritized for sub-4hr MTTR resolution to ensure SLA compliance.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 3: Regional Footprint & State Analysis */}
+                    <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-12 lg:col-span-6 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6">Regional Impact Footprint</h3>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={regionalData} layout="vertical" margin={{ left: 20, right: 30 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={100}
+                                            tick={{ fontSize: 10, fontWeight: '700' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/5%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }} />
+                                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="col-span-12 lg:col-span-6 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm overflow-hidden">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6">Probable Cause Evolution</h3>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={probableCauses} layout="horizontal" margin={{ top: 20, bottom: 20 }}>
+                                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: '700' }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={60} />
+                                        <YAxis hide />
+                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/2%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }} />
+                                        <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={30}>
+                                            {probableCauses.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                            <LabelList dataKey="count" position="top" style={{ fontSize: '10px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 4: Severity Distribution & Correlation Flows */}
+                    <div className="grid grid-cols-12 gap-6">
+                        {/* Severity Counts Plot */}
+                        <div className="col-span-12 lg:col-span-4 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-6 shadow-sm overflow-hidden">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
+                                <AlertCircle size={16} className="text-primary" />
+                                Severity Distribution
+                            </h3>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={severityDistribution} layout="vertical" margin={{ left: 10, right: 40 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={70}
+                                            tick={{ fontSize: 10, fontWeight: '800' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <Tooltip cursor={{ fill: 'hsl(var(--primary)/2%)' }} contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderRadius: '12px' }} />
+                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
+                                            {severityDistribution.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                            <LabelList dataKey="value" position="right" style={{ fontSize: '11px', fontWeight: '900', fill: 'hsl(var(--foreground))' }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Advanced Correlation Flows (Moved here) */}
+                        <div className="col-span-12 lg:col-span-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <CausalFlowSankey data={events} />
+                                <MultiDimParallelSankey data={events} />
+                            </div>
+                        </div>
                     </div>
                 </div>
             ) : (

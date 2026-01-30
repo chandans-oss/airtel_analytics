@@ -20,7 +20,16 @@ import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 
 const dashboardSubModules = [
-  { id: 'inventory', label: 'Inventory', icon: Cpu },
+  { id: 'unified', label: 'Executive Overview', icon: LayoutDashboard },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    icon: Database,
+    children: [
+      { id: 'links', label: 'Links Analysis', icon: Link2 },
+      { id: 'nodes', label: 'Nodes Analysis', icon: Cpu },
+    ]
+  },
   { id: 'events', label: 'Events', icon: Activity },
   { id: 'discovery', label: 'Discovery & Change', icon: Search },
   { id: 'config', label: 'Config Mgmt', icon: Settings },
@@ -39,8 +48,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
-  const { selectedModule, setSelectedModule } = useInventoryStore();
+  const { selectedModule, selectedSubModule, setSelectedModule, setSelectedSubModule } = useInventoryStore();
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
+  const [inventoryExpanded, setInventoryExpanded] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
   const isModuleActive = (id: string) => selectedModule === id;
@@ -54,16 +64,16 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     >
       {/* Header */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4 overflow-hidden">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background shadow-sm border border-border/50">
-          <img src="/airtel-logo-icon.svg" alt="Airtel Logo" className="h-6 w-6 object-contain" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background shadow-sm border border-border/50 overflow-hidden">
+          <img src="/infraon-logo.webp" alt="INFRAON Logo" className="h-full w-full object-cover" />
         </div>
         {!collapsed && (
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-semibold uppercase tracking-tight text-muted-foreground/80 truncate font-display">
-              Airtel Analytics
+              INFRAON Analytics
             </span>
             <span className="text-[10px] font-medium text-primary/70 leading-none font-display">
-              by INFRAON
+              Data Insights Hub
             </span>
           </div>
         )}
@@ -97,7 +107,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
                 <button
                   onClick={() => {
                     setDashboardExpanded(!dashboardExpanded);
-                    setSelectedModule('inventory');
+                    setSelectedModule('unified');
                   }}
                   className={cn(
                     "sidebar-module w-full justify-between",
@@ -116,20 +126,85 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
                 {/* Sub-modules */}
                 {dashboardExpanded && !collapsed && (
                   <div className="ml-4 mt-1 space-y-0.5 border-l border-sidebar-border pl-3">
-                    {dashboardSubModules.map((sub) => (
-                      <Link
-                        key={sub.id}
-                        to="/"
-                        onClick={() => setSelectedModule(sub.id)}
-                        className={cn(
-                          "sidebar-module text-xs",
-                          isModuleActive(sub.id) && "sidebar-module-active"
-                        )}
-                      >
-                        <sub.icon size={14} />
-                        <span>{sub.label}</span>
-                      </Link>
-                    ))}
+                    {dashboardSubModules.map((sub: any) => {
+                      const isModuleSelected = isModuleActive(sub.id);
+                      const hasChildren = sub.children && sub.children.length > 0;
+
+                      return (
+                        <div key={sub.id} className="space-y-0.5">
+                          {hasChildren ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedModule(sub.id);
+                                  setSelectedSubModule('links'); // Default to links
+                                  setInventoryExpanded(!inventoryExpanded);
+                                }}
+                                className={cn(
+                                  "sidebar-module text-xs w-full justify-between transition-all duration-300",
+                                  isModuleSelected && "sidebar-module-active font-bold"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <sub.icon size={14} className={isModuleSelected ? "text-primary shadow-[0_0_8px_rgba(0,165,142,0.4)]" : "text-muted-foreground"} />
+                                  <span>{sub.label}</span>
+                                </div>
+                                {inventoryExpanded ? (
+                                  <ChevronDown size={12} className="opacity-50" />
+                                ) : (
+                                  <ChevronRight size={12} className="opacity-50" />
+                                )}
+                              </button>
+
+                              {/* Nested Children */}
+                              {inventoryExpanded && (
+                                <div className="ml-3 mt-0.5 space-y-0.5 border-l border-primary/20 pl-3 animate-in slide-in-from-left-2 duration-300">
+                                  {sub.children.map((child: any) => {
+                                    const isChildActive = isModuleSelected && selectedSubModule === child.id;
+                                    return (
+                                      <Link
+                                        key={child.id}
+                                        to="/"
+                                        onClick={() => {
+                                          setSelectedModule(sub.id);
+                                          setSelectedSubModule(child.id);
+                                        }}
+                                        className={cn(
+                                          "sidebar-module text-[10px] py-1.5 transition-all duration-200 group/child flex items-center justify-between",
+                                          isChildActive
+                                            ? "text-primary font-black bg-primary/5"
+                                            : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
+                                        )}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <child.icon size={12} className={cn("transition-transform", isChildActive ? "scale-110" : "group-hover/child:scale-110")} />
+                                          <span>{child.label}</span>
+                                        </div>
+                                        {isChildActive && (
+                                          <div className="h-1 w-1 rounded-full bg-primary shadow-[0_0_4px_rgba(0,165,142,0.6)]" />
+                                        )}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <Link
+                              to="/"
+                              onClick={() => setSelectedModule(sub.id)}
+                              className={cn(
+                                "sidebar-module text-xs",
+                                isModuleSelected && "sidebar-module-active"
+                              )}
+                            >
+                              <sub.icon size={14} />
+                              <span>{sub.label}</span>
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </>

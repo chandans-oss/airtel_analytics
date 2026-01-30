@@ -78,26 +78,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 onClick && "cursor-pointer hover:shadow-lg"
             )}
         >
-            {/* Hover Tooltip/Overlay */}
-            <div
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center z-20"
-                onClick={(e) => {
-                    if (issueCount > 0) {
-                        e.stopPropagation();
-                        onIssuesClick?.();
-                    }
-                }}
-            >
-                <div className="p-2 rounded-full bg-primary/10 text-primary mb-2">
-                    <Search size={20} />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">
-                    {issueCount > 0 ? `View ${issueCount} ${downLabel.toLowerCase()} reasons` : 'All Systems Optimal'}
-                </p>
-                <p className="text-[8px] font-bold text-muted-foreground mt-1 uppercase tracking-tighter">
-                    Click to analyze dataset
-                </p>
-            </div>
+
 
             {/* Top Row: Title and Redirect */}
             <div className="flex items-start justify-between mb-2">
@@ -128,8 +109,24 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1 transition-transform group-hover:scale-110">
+                <div
+                    className="relative group/down flex flex-col items-center cursor-pointer"
+                    onClick={(e) => {
+                        if (issueCount > 0) {
+                            e.stopPropagation();
+                            onIssuesClick?.();
+                        }
+                    }}
+                >
+                    {/* Local Hover Tooltip */}
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover/down:opacity-100 transition-all duration-300 pointer-events-none z-30">
+                        <div className="bg-rose-500 text-[9px] font-black text-white px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xl border border-white/20 flex items-center gap-1.5 animate-in slide-in-from-bottom-1">
+                            <AlertTriangle size={10} />
+                            Review {issueCount} {downLabel} Reasons
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 transition-transform group-hover/down:scale-110">
                         <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
                         <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
                     </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useInventoryStore } from '@/store/inventoryStore';
 import {
     Activity,
@@ -42,9 +42,25 @@ interface KPIProps {
 }
 
 function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick }: KPIProps) {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
     const isConfig = title.toLowerCase().includes('config');
     const upLabel = isConfig ? 'SUCCESS' : 'UP';
     const downLabel = isConfig ? 'FAILURE' : 'DOWN';
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowMenu(false);
+            }
+        };
+        if (showMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showMenu]);
 
     const statusColor = useMemo(() => {
         if (issueCount === 0) return {
@@ -71,7 +87,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
         <div
             onClick={onClick}
             className={cn(
-                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md overflow-hidden",
+                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md overflow-visible",
                 statusColor.bg,
                 statusColor.border,
                 statusColor.hover,
@@ -110,23 +126,41 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 </div>
 
                 <div
-                    className="relative group/down flex flex-col items-center cursor-pointer"
-                    onClick={(e) => {
+                    className="relative flex flex-col items-center cursor-context-menu"
+                    onContextMenu={(e) => {
+                        e.preventDefault();
                         if (issueCount > 0) {
-                            e.stopPropagation();
-                            onIssuesClick?.();
+                            setShowMenu(true);
                         }
                     }}
                 >
-                    {/* Centered Hover Prompt */}
-                    <div className="absolute bottom-[40px] left-1/2 -translate-x-1/2 opacity-0 group-hover/down:opacity-100 transition-all duration-300 z-30">
-                        <div className="bg-rose-600 text-[11px] font-black text-white px-5 py-2.5 rounded-xl whitespace-nowrap shadow-[0_10px_30px_rgba(225,29,72,0.4)] border border-white/20 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
-                            <AlertTriangle size={14} className="animate-pulse" />
-                            Analyze {issueCount} {downLabel} Dataset
+                    {/* Right-Click Context Menu */}
+                    {showMenu && (
+                        <div
+                            ref={menuRef}
+                            className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in zoom-in-95 duration-200"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onIssuesClick?.();
+                                setShowMenu(false);
+                            }}
+                        >
+                            <div className="bg-popover border border-border shadow-2xl rounded-xl p-1 min-w-[160px]">
+                                <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-rose-500 hover:text-white text-foreground transition-all group/item">
+                                    <div className="p-1.5 rounded-md bg-rose-500/10 group-hover/item:bg-white/20">
+                                        <AlertTriangle size={14} className="text-rose-500 group-hover/item:text-white" />
+                                    </div>
+                                    <div className="flex flex-col items-start text-left">
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Analyze {downLabel}</span>
+                                        <span className="text-[8px] opacity-70 font-bold uppercase tracking-tighter">View detailed records</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 bg-popover border-b border-r border-border rotate-45 -mt-1.5" />
                         </div>
-                    </div>
+                    )}
 
-                    <div className="flex items-center gap-1 transition-transform group-hover/down:scale-110">
+                    <div className="flex items-center gap-1">
                         <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
                         <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
                     </div>

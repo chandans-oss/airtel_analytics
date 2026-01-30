@@ -7,7 +7,7 @@ import { useInventoryStore } from '@/store/inventoryStore';
 import { cn } from '@/lib/utils';
 
 import { HeaderKPIs } from '../dashboard/HeaderKPIs';
-import { InventorySidebar } from './InventorySidebar';
+
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -18,8 +18,6 @@ export function MainLayout({ children }: MainLayoutProps) {
   const {
     toolSidebarOpen,
     setToolSidebarOpen,
-    inventorySidebarOpen,
-    setInventorySidebarOpen,
     selectedModule
   } = useInventoryStore();
 
@@ -33,7 +31,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       />
 
       <ToolSidebar />
-      <InventorySidebar />
 
       <div className="flex flex-1 flex-col overflow-auto bg-background/50">
         {/* Top Header */}
@@ -49,15 +46,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               </button>
             )}
 
-            {selectedModule === 'inventory' && !inventorySidebarOpen && (
-              <button
-                onClick={() => setInventorySidebarOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all shadow-sm group"
-                title="Inventory Dashboards"
-              >
-                <LayoutDashboard size={14} className="group-hover:scale-110 transition-transform" />
-              </button>
-            )}
+
 
             {/* KPI Header Stats (Replacing Search) */}
             <HeaderKPIs />

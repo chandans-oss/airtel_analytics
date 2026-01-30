@@ -8,6 +8,8 @@ import {
     BarChart3,
     ChevronRight,
     ArrowUpRight,
+    ArrowUp,
+    ArrowDown,
     AlertTriangle,
     Download,
     LayoutDashboard,
@@ -33,46 +35,71 @@ interface KPIProps {
     title: string;
     value: string;
     total: string;
-    percent: number;
     icon: any;
-    color: string;
+    issueCount: number;
     onClick?: () => void;
     onIssuesClick?: () => void;
 }
 
-function KPICard({ title, value, total, percent, icon: Icon, color, onClick, onIssuesClick }: KPIProps) {
+function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick }: KPIProps) {
+    const statusColor = useMemo(() => {
+        if (issueCount === 0) return {
+            bg: 'bg-emerald-500/5',
+            border: 'border-emerald-500/20',
+            text: 'text-emerald-500',
+            hover: 'hover:border-emerald-500/50'
+        };
+        if (issueCount <= 8) return {
+            bg: 'bg-amber-500/5',
+            border: 'border-amber-500/20',
+            text: 'text-amber-500',
+            hover: 'hover:border-amber-500/50'
+        };
+        return {
+            bg: 'bg-rose-500/5',
+            border: 'border-rose-500/20',
+            text: 'text-rose-500',
+            hover: 'hover:border-rose-500/50'
+        };
+    }, [issueCount]);
+
     return (
         <div
             onClick={onClick}
             className={cn(
-                "group relative rounded-2xl border border-border/50 bg-card/40 p-6 backdrop-blur-md transition-all duration-300 hover:shadow-2xl hover:border-primary/30",
-                onClick && "cursor-pointer hover:bg-card/60"
+                "group relative rounded-2xl border p-5 transition-all duration-300 backdrop-blur-md",
+                statusColor.bg,
+                statusColor.border,
+                statusColor.hover,
+                onClick && "cursor-pointer hover:shadow-lg"
             )}
         >
-            <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-foreground">{value}</span>
-                        <span className="text-xs font-bold text-muted-foreground">/ {total}</span>
-                    </div>
-                </div>
-                <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110", `bg-${color}/10 text-${color}`)} style={{ backgroundColor: `${color}15`, color: color }}>
-                    <Icon size={20} />
+            {/* Top Row: Title and Redirect */}
+            <div className="flex items-start justify-between mb-2">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-foreground/80 font-display">
+                    {title}
+                </h3>
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
+                    <ArrowUpRight size={14} />
                 </div>
             </div>
 
-            <div className="mt-6 flex flex-col gap-4">
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[10px] font-bold">
-                        <span className="text-muted-foreground">Monitoring Efficiency</span>
-                        <span style={{ color }}>{percent}%</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted/30 overflow-hidden">
-                        <div
-                            className="h-full transition-all duration-1000 ease-out"
-                            style={{ width: `${percent}%`, backgroundColor: color }}
-                        />
+            {/* Center: Total Number */}
+            <div className="flex justify-center my-4">
+                <span className="text-4xl font-black tabular-nums tracking-tighter text-foreground drop-shadow-sm">
+                    {total}
+                </span>
+            </div>
+
+            {/* Bottom Row: Healthy and Issues */}
+            <div className="flex items-center justify-between mt-auto">
+                <div className="flex items-center gap-1.5">
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1">
+                            <span className="text-xl font-black text-emerald-500 tabular-nums">{value}</span>
+                            <ArrowUp size={16} className="text-emerald-500" strokeWidth={3} />
+                        </div>
+                        <span className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-tighter">Healthy</span>
                     </div>
                 </div>
 
@@ -81,15 +108,16 @@ function KPICard({ title, value, total, percent, icon: Icon, color, onClick, onI
                         e.stopPropagation();
                         onIssuesClick?.();
                     }}
-                    className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-[9px] font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all border border-orange-500/20"
+                    className="flex group/btn items-center gap-1.5"
                 >
-                    <AlertTriangle size={12} />
-                    Issues
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1 transition-transform group-hover/btn:scale-110">
+                            <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
+                            <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
+                        </div>
+                        <span className="text-[8px] font-bold text-rose-500/60 uppercase tracking-tighter">Issues</span>
+                    </div>
                 </button>
-            </div>
-
-            <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                <Icon size={120} />
             </div>
         </div>
     );
@@ -101,27 +129,27 @@ export function UnifiedMainDashboard() {
 
     // KPI Calculations
     const stats = useMemo(() => {
-        const deviceMonitored = nodes.filter(n => n.snmpStatus === 'UP').length;
         const totalNodes = nodes.length || 100;
-
-        const linksMonitored = links.filter(l => l.linkStatus === 'UP').length;
         const totalLinks = links.length || 100;
 
-        const bwMonitored = links.filter(l => (l.utilization || 0) > 0).length;
+        const deviceIssues = nodes.filter(n => n.snmpStatus === 'DOWN' || n.status === 'DOWN').length;
+        const linkIssues = links.filter(l => l.linkStatus === 'DOWN').length;
+        const bwIssues = links.filter(l => (l.utilization || 0) > 85).length;
+        const jitterIssues = links.filter(l => (l.performanceScore || 100) < 60).length;
+        const configIssues = configFailure.length;
 
-        // Mocking Jitter and Config rate based on user request "90/100" etc if data is insufficient
-        const devicePercent = Math.round((deviceMonitored / totalNodes) * 100) || 90;
-        const linkPercent = Math.round((linksMonitored / totalLinks) * 100) || 80;
-        const bwPercent = Math.round((bwMonitored / totalLinks) * 100) || 70;
-        const jitterPercent = 70; // Performance data is typically derived/mocked
-        const configRate = Math.round(((totalNodes - configFailure.length) / totalNodes) * 100) || 90;
+        const deviceMonitored = totalNodes - deviceIssues;
+        const linksMonitored = totalLinks - linkIssues;
+        const bwMonitored = totalLinks - bwIssues;
+        const jitterMonitored = totalLinks - jitterIssues;
+        const configMonitored = totalNodes - configIssues;
 
         return {
-            device: { val: deviceMonitored || 90, total: totalNodes || 100, percent: devicePercent },
-            link: { val: linksMonitored || 80, total: totalLinks || 100, percent: linkPercent },
-            bw: { val: bwMonitored || 70, total: totalLinks || 100, percent: bwPercent },
-            jitter: { val: 70, total: 100, percent: jitterPercent },
-            config: { val: totalNodes - configFailure.length || 90, total: totalNodes || 100, percent: configRate }
+            device: { val: deviceMonitored, total: totalNodes, issues: deviceIssues },
+            link: { val: linksMonitored, total: totalLinks, issues: linkIssues },
+            bw: { val: bwMonitored, total: totalLinks, issues: bwIssues },
+            jitter: { val: jitterMonitored, total: totalLinks, issues: jitterIssues },
+            config: { val: configMonitored, total: totalNodes, issues: configIssues }
         };
     }, [nodes, links, configFailure]);
 
@@ -143,7 +171,7 @@ export function UnifiedMainDashboard() {
 
     if (view === 'issues') {
         return (
-            <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="space-y-8 animate-in fade-in duration-500 pb-20">
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-black uppercase tracking-widest">Global Issue Analytics</h2>
@@ -195,16 +223,15 @@ export function UnifiedMainDashboard() {
     }
 
     return (
-        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
             <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <KPICard
                         title="Device Monitoring"
                         value={String(stats.device.val)}
                         total={String(stats.device.total)}
-                        percent={stats.device.percent}
+                        issueCount={stats.device.issues}
                         icon={Database}
-                        color="#00A58E"
                         onClick={() => {
                             setSelectedModule('inventory');
                             setSelectedSubModule('nodes');
@@ -212,12 +239,11 @@ export function UnifiedMainDashboard() {
                         onIssuesClick={() => setView('issues')}
                     />
                     <KPICard
-                        title="Link Monitoring"
+                        title="Link Health"
                         value={String(stats.link.val)}
                         total={String(stats.link.total)}
-                        percent={stats.link.percent}
+                        issueCount={stats.link.issues}
                         icon={Zap}
-                        color="#2196F3"
                         onClick={() => {
                             setSelectedModule('inventory');
                             setSelectedSubModule('links');
@@ -225,12 +251,11 @@ export function UnifiedMainDashboard() {
                         onIssuesClick={() => setView('issues')}
                     />
                     <KPICard
-                        title="B/W Monitoring"
+                        title="Bandwidth Monitoring"
                         value={String(stats.bw.val)}
                         total={String(stats.bw.total)}
-                        percent={stats.bw.percent}
+                        issueCount={stats.bw.issues}
                         icon={BarChart3}
-                        color="#8b5cf6"
                         onClick={() => {
                             setSelectedModule('inventory');
                             setSelectedSubModule('links');
@@ -238,12 +263,11 @@ export function UnifiedMainDashboard() {
                         onIssuesClick={() => setView('issues')}
                     />
                     <KPICard
-                        title="Jitter Monitoring"
+                        title="Jitter Analysis"
                         value={String(stats.jitter.val)}
                         total={String(stats.jitter.total)}
-                        percent={stats.jitter.percent}
+                        issueCount={stats.jitter.issues}
                         icon={Activity}
-                        color="#f59e0b"
                         onClick={() => {
                             setSelectedModule('inventory');
                             setSelectedSubModule('links');
@@ -251,12 +275,11 @@ export function UnifiedMainDashboard() {
                         onIssuesClick={() => setView('issues')}
                     />
                     <KPICard
-                        title="Config Mgmt"
+                        title="Config Compliance"
                         value={String(stats.config.val)}
-                        total={stats.config.total === 100 ? "100" : String(stats.config.total)}
-                        percent={stats.config.percent}
+                        total={String(stats.config.total)}
+                        issueCount={stats.config.issues}
                         icon={ShieldCheck}
-                        color="#10b981"
                         onClick={() => {
                             setSelectedModule('config');
                         }}

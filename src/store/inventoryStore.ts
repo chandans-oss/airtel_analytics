@@ -94,6 +94,11 @@ interface InventoryState {
   getFilteredConfigFailures: () => ConfigFailureData[];
   getFilteredNodesExcluding: (excludeField?: string) => NodeData[];
   getFilteredLinksExcluding: (excludeField?: string) => LinkData[];
+  // Metrics Toggles
+  showNetworkMetrics: boolean;
+  showAppMetrics: boolean;
+  toggleNetworkMetrics: () => void;
+  toggleAppMetrics: () => void;
 }
 
 const defaultHierarchyLevels: HierarchyLevel[] = [
@@ -167,6 +172,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   toolSidebarOpen: false,
   inventorySidebarOpen: true,
   showTable: false,
+
+  showNetworkMetrics: true,
+  showAppMetrics: true,
+  toggleNetworkMetrics: () => set((state) => ({ showNetworkMetrics: !state.showNetworkMetrics })),
+  toggleAppMetrics: () => set((state) => ({ showAppMetrics: !state.showAppMetrics })),
 
   activeTopologyView: 'links', // Default to nodes
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),

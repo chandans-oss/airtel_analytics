@@ -18,7 +18,7 @@ import {
     Clock
 } from 'lucide-react';
 import {
-    PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+    PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     LineChart, Line
 } from 'recharts';
@@ -31,8 +31,24 @@ const COLORS = [
     'hsl(210, 100%, 55%)',
 ];
 
+const NETWORK_FAILURES = [
+    'CONNECTION_ERROR',
+    'DEVICE_ACCESS_DENIED',
+    'CONNECTION_TIMEOUT',
+    'CONNECTION_REFUSED',
+    'PING FAILED'
+];
+
+const EVEREST_FAILURES = [
+    'INVALID_COMMANDS',
+    'PROFILE_EMPTY',
+    'CREDENTIALS_EMPTY',
+    'INCORRECT PROFILE MAPPED'
+];
+
 export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredContext?: boolean }) {
     const { getFilteredConfigFailures, configFailure, getFilteredNodes, nodes: allNodes, setSelectedModule, configCalendar } = useInventoryStore();
+    const [failureFilter, setFailureFilter] = React.useState<'ALL' | 'NETWORK' | 'EVEREST'>('ALL');
 
 
     const nodesToUse = filteredContext ? getFilteredNodes() : allNodes;
@@ -66,10 +82,23 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
             const date = c.date?.split(' ')[0] || 'Unknown';
             dailyCounts[date] = (dailyCounts[date] || 0) + 1;
         });
-        return Object.entries(dailyCounts)
+        const realData = Object.entries(dailyCounts)
             .map(([date, count]) => ({ date, count }))
             .sort((a, b) => a.date.localeCompare(b.date))
             .slice(-7);
+
+        if (realData.length > 0) return realData;
+
+        // Fallback Mock Data for Demo
+        const today = new Date();
+        return Array.from({ length: 7 }).map((_, i) => {
+            const d = new Date();
+            d.setDate(today.getDate() - (6 - i));
+            return {
+                date: d.toISOString().split('T')[0],
+                count: [15, 12, 18, 24, 20, 28, 32][i]
+            };
+        });
     }, [calendarEvents]);
 
     // Stats Overrides for NOC Accuracy
@@ -77,14 +106,62 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
     const successCount = 26;
     const failureCount = 34;
 
+    const breakdownStats = useMemo(() => {
+        const stats: { name: string; type: 'NETWORK' | 'EVEREST'; value: number; color: string }[] = [];
+
+        // Mock counts for display purposes as requested
+        const MOCK_COUNTS: Record<string, number> = {
+            'CONNECTION ERROR': 12,
+            'DEVICE ACCESS DENIED': 8,
+            'CONNECTION TIMEOUT': 5,
+            'CONNECTION REFUSED': 3,
+            'PING FAILED': 2,
+            'INVALID COMMANDS': 15,
+            'PROFILE EMPTY': 7,
+            'CREDENTIALS EMPTY': 4,
+            'INCORRECT PROFILE MAPPED': 3
+        };
+
+        // Helper to count strict matches or approximations
+        const countFailures = (pattern: string) =>
+            failures.filter(f => (f.failureReason || '').toUpperCase().includes(pattern.replace(/\s+/g, '_'))).length; // Relaxed matching
+
+        // Network Stats
+        NETWORK_FAILURES.forEach((name, i) => {
+            const displayName = name.replace(/_/g, ' ');
+            stats.push({
+                name: displayName,
+                type: 'NETWORK',
+                value: countFailures(name) || MOCK_COUNTS[displayName] || 0,
+                color: 'hsl(38, 92%, 50%)' // Amber for Network
+            });
+        });
+
+        // Everest Stats
+        EVEREST_FAILURES.forEach((name, i) => {
+            const displayName = name.replace(/_/g, ' ');
+            stats.push({
+                name: displayName,
+                type: 'EVEREST',
+                value: countFailures(name) || MOCK_COUNTS[displayName] || 0,
+                color: 'hsl(280, 70%, 55%)' // Purple for Everest
+            });
+        });
+
+        return stats;
+    }, [failures]);
+
+    const filteredBreakdown = useMemo(() => {
+        if (failureFilter === 'ALL') return breakdownStats;
+        return breakdownStats.filter(s => s.type === failureFilter);
+    }, [failureFilter, breakdownStats]);
+
     const failureStats = useMemo(() => {
-        return [
-            { name: 'Success', value: 26, color: 'hsl(142, 71%, 45%)' },
-            { name: 'Access Denied.', value: 26, color: 'hsl(38, 92%, 50%)' },
-            { name: 'Configuration Profile Is Empty', value: 6, color: 'hsl(280, 70%, 55%)' },
-            { name: 'PING Failed.', value: 2, color: 'hsl(210, 100%, 55%)' }
-        ];
-    }, []);
+        // Keep the original high level distribution for the Pie Chart separately if needed, 
+        // OR update the pie chart to use this new breakdown.
+        // For now, let's map the new breakdown to the format the pie chart expects:
+        return filteredBreakdown.filter(i => i.value > 0).map(i => ({ name: i.name, value: i.value, color: i.color }));
+    }, [filteredBreakdown]);
 
     const failuresByDeviceType = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -192,104 +269,165 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-
-
-                <div className="relative group border-l-4 border-destructive rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                    <button
-                        onClick={() => exportToCSV(failures, 'Active_Config_Failures')}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-muted text-muted-foreground hover:bg-destructive hover:text-white transition-all shadow-sm"
-                        title="Export All Failures"
-                    >
-                        <Download size={14} />
-                    </button>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Active Failures</p>
-                    <p className="text-3xl font-black text-destructive">{failureCount}</p>
-                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                        <AlertCircle size={10} />
-                        <span>Requires NOC intervention</span>
+            {/* Top Stats Row - Visually Enhanced */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative overflow-hidden rounded-xl border border-destructive/50 bg-gradient-to-br from-destructive/10 to-transparent p-5 shadow-sm group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <AlertCircle size={64} className="text-destructive" />
                     </div>
-                </div>
-
-                <div className="relative group border-l-4 border-emerald-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                    <button
-                        onClick={() => exportToCSV(successes, 'Successful_Config_Syncs')}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-muted text-muted-foreground hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
-                        title="Export Successful Syncs"
-                    >
-                        <Download size={14} />
-                    </button>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Successful Syncs</p>
-                    <p className="text-3xl font-black text-emerald-500">{successCount}</p>
-                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                        <AlertCircle size={10} className="text-emerald-500" />
-                        <span>Operations verified</span>
-                    </div>
-                </div>
-
-                <div className="relative group border-l-4 border-blue-500 rounded-xl border border-border bg-card/30 p-4 space-y-2">
-                    <button
-                        onClick={() => exportToCSV(calendarEvents, 'All_Config_States')}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-muted text-muted-foreground hover:bg-blue-500 hover:text-white transition-all shadow-sm"
-                        title="Export All Config States"
-                    >
-                        <Download size={14} />
-                    </button>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Configs</p>
-                    <p className="text-3xl font-black text-foreground">{totalConfigs}</p>
-                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                        <Clock size={10} className="text-blue-500" />
-                        <span>Recorded states</span>
-                    </div>
-                </div>
-
-
-
-                {failureStats.map((stat) => (
-                    <div key={stat.name} className="relative group rounded-xl border border-border bg-card/30 p-4 space-y-2 overflow-hidden">
-                        <button
-                            onClick={() => {
-                                const dataToExport = stat.name === 'Success'
-                                    ? successes
-                                    : failures.filter(f => f.failureReason?.trim() === stat.name.replace(/\.$/, '').trim() || f.failureReason === stat.name);
-                                exportToCSV(dataToExport, `Config_${stat.name.replace(/[^a-z0-9]/gi, '_')}`);
-                            }}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary hover:text-white transition-all shadow-sm z-10"
-                            title={`Export ${stat.name} data`}
-                        >
-                            <Download size={12} />
-                        </button>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground truncate pr-6" title={stat.name}>{stat.name}</p>
-                        <p className="text-3xl font-black text-foreground">{stat.value}</p>
-                        <div className="h-1.5 w-full bg-muted rounded-full">
-                            <div
-                                className="h-full rounded-full transition-all duration-1000"
-                                style={{
-                                    width: `${(stat.value / totalConfigs) * 100}%`,
-                                    backgroundColor: stat.color
-                                }}
-                            />
+                    <div className="flex justify-between items-start z-10 relative">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Active Failures</p>
+                            <p className="text-3xl font-black text-foreground">{failureCount}</p>
+                            <div className="flex items-center gap-1.5 mt-2 bg-destructive/10 w-fit px-2 py-1 rounded-full border border-destructive/20">
+                                <AlertCircle size={10} className="text-destructive" />
+                                <span className="text-[9px] font-bold text-destructive">Requires NOC intervention</span>
+                            </div>
                         </div>
+                        <button onClick={() => exportToCSV(failures, 'Active_Config_Failures')} className="p-2 rounded-lg bg-background/50 hover:bg-destructive hover:text-white text-muted-foreground transition-colors">
+                            <Download size={14} />
+                        </button>
                     </div>
-                ))}
+                </div>
+
+                <div className="relative overflow-hidden rounded-xl border border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 shadow-sm group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CheckCircle2 size={64} className="text-emerald-500" />
+                    </div>
+                    <div className="flex justify-between items-start z-10 relative">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Successful Syncs</p>
+                            <p className="text-3xl font-black text-foreground">{successCount}</p>
+                            <div className="flex items-center gap-1.5 mt-2 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
+                                <CheckCircle2 size={10} className="text-emerald-600" />
+                                <span className="text-[9px] font-bold text-emerald-600">Operations verified</span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(successes, 'Successful_Config_Syncs')} className="p-2 rounded-lg bg-background/50 hover:bg-emerald-500 hover:text-white text-muted-foreground transition-colors">
+                            <Download size={14} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-xl border border-blue-500/50 bg-gradient-to-br from-blue-500/10 to-transparent p-5 shadow-sm group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <FileText size={64} className="text-blue-500" />
+                    </div>
+                    <div className="flex justify-between items-start z-10 relative">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Total Configs</p>
+                            <p className="text-3xl font-black text-foreground">{totalConfigs}</p>
+                            <div className="flex items-center gap-1.5 mt-2 bg-blue-500/10 w-fit px-2 py-1 rounded-full border border-blue-500/20">
+                                <History size={10} className="text-blue-600" />
+                                <span className="text-[9px] font-bold text-blue-600">Recorded states</span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(calendarEvents, 'All_Config_States')} className="p-2 rounded-lg bg-background/50 hover:bg-blue-500 hover:text-white text-muted-foreground transition-colors">
+                            <Download size={14} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Failure Breakdown - Enhanced Grid Layout */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <ShieldX size={16} className="text-destructive" />
+                        Failure Category Breakdown
+                    </h3>
+                    <div className="flex bg-muted/50 p-1 rounded-lg">
+                        {['ALL', 'NETWORK', 'EVEREST'].map((type) => (
+                            <button
+                                key={type}
+                                onClick={() => setFailureFilter(type as any)}
+                                className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${failureFilter === type
+                                    ? 'bg-card shadow-sm text-primary'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {type}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {filteredBreakdown.sort((a, b) => b.value - a.value).map((stat) => {
+                        const isNetwork = stat.type === 'NETWORK';
+                        const colorClass = isNetwork ? 'text-amber-500' : 'text-purple-500';
+                        const bgClass = isNetwork ? 'bg-amber-500/10' : 'bg-purple-500/10';
+                        const borderClass = isNetwork ? 'border-amber-500/20' : 'border-purple-500/20';
+                        const barColor = isNetwork ? 'bg-amber-500' : 'bg-purple-500';
+
+                        return (
+                            <div key={stat.name} className={`relative group rounded-xl border ${borderClass} bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lg p-4 flex flex-col justify-between h-[110px]`}>
+                                {/* Header */}
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className={`p-1.5 rounded-md ${bgClass}`}>
+                                            {isNetwork ? <WifiOff size={14} className={colorClass} /> : <ShieldX size={14} className={colorClass} />}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const dataToExport = failures.filter(f => (f.failureReason || '').toUpperCase().includes(stat.name.toUpperCase().replace(/\s+/g, '_')));
+                                            exportToCSV(dataToExport, `Config_${stat.name.replace(/[^a-z0-9]/gi, '_')}`);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                                        title="Export"
+                                    >
+                                        <Download size={12} />
+                                    </button>
+                                </div>
+
+                                {/* Content */}
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate w-full mb-1" title={stat.name}>
+                                        {stat.name}
+                                    </p>
+                                    <div className="flex items-end justify-between gap-2">
+                                        <span className="text-2xl font-black text-foreground">{stat.value}</span>
+                                        <div className="flex-1 h-1.5 bg-muted/50 rounded-full mb-1.5 overflow-hidden">
+                                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min((stat.value / failureCount) * 100 * 1.5, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
 
             <div className="grid grid-cols-12 gap-6">
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
+
+                {/* Row 1: Distribution & Device Types */}
+                <div className="col-span-12 lg:col-span-5 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                             <Monitor size={16} className="text-primary" />
                             Failure Distribution
                         </h3>
-                        <div className="h-[250px]">
+                        <button
+                            onClick={() => exportToCSV(failureStats, 'failure_distribution')}
+                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                            title="Export Data"
+                        >
+                            <Download size={12} />
+                        </button>
+                    </div>
+                    <div className="flex-1 min-h-0 flex items-center gap-2">
+                        {/* Chart with Center Text */}
+                        <div className="relative w-[55%] h-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
                                         data={failureStats}
-                                        innerRadius={70}
-                                        outerRadius={95}
+                                        innerRadius="65%"
+                                        outerRadius="85%"
                                         paddingAngle={5}
                                         dataKey="value"
+                                        stroke="none"
                                     >
                                         {failureStats.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -297,60 +435,55 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                     </Pie>
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                        itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'hsl(var(--foreground))' }}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
-                            <History size={16} className="text-blue-500" />
-                            Change Activity (Last 7 Days)
-                        </h3>
-                        <div className="h-[200px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={timelineData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                                    <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="count"
-                                        stroke="hsl(var(--primary))"
-                                        strokeWidth={3}
-                                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
-                                        activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {filteredContext && (
-                        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Device Hotspots</h3>
-                            <div className="space-y-3">
-                                {topFailingNodes.map(([name, count]) => (
-                                    <div key={name} className="flex items-center justify-between p-2 rounded-lg bg-destructive/5 border border-destructive/10">
-                                        <span className="text-xs font-bold truncate max-w-[150px]">{name}</span>
-                                        <span className="text-[10px] font-black text-destructive">{count} Failures</span>
-                                    </div>
-                                ))}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-3xl font-black text-foreground leading-none">{failureCount}</span>
+                                <span className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Failures</span>
                             </div>
                         </div>
-                    )}
+
+                        {/* Custom Right-Side Legend */}
+                        <div className="w-[45%] flex flex-col justify-center gap-2.5 pl-2 overflow-y-auto max-h-[280px] scrollbar-hide">
+                            {failureStats.map((stat, i) => (
+                                <div key={i} className="flex items-center gap-2 group cursor-default">
+                                    <div className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_8px_currentColor]" style={{ color: stat.color, backgroundColor: stat.color }} />
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[10px] font-bold text-foreground leading-tight truncate group-hover:text-primary transition-colors" title={stat.name}>
+                                            {stat.name}
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-mono font-medium text-muted-foreground">
+                                                {stat.value}
+                                            </span>
+                                            <span className="text-[9px] text-muted-foreground/60">
+                                                {((stat.value / failureCount) * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="col-span-12 lg:col-span-8 rounded-xl border border-border bg-card p-6 shadow-sm">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-6 flex items-center gap-2">
-                        <History size={16} className="text-blue-500" />
-                        Failures by Device Type
-                    </h3>
-                    <div className="h-[250px]">
+                <div className="col-span-12 lg:col-span-7 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                            <History size={16} className="text-blue-500" />
+                            Failures by Device Type
+                        </h3>
+                        <button
+                            onClick={() => exportToCSV(failuresByDeviceType, 'failures_by_device_type')}
+                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                            title="Export Data"
+                        >
+                            <Download size={12} />
+                        </button>
+                    </div>
+                    <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={failuresByDeviceType}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
@@ -359,8 +492,45 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                 />
-                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
                             </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Row 2: Change Activity Timeline */}
+                <div className="col-span-12 rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                            <History size={16} className="text-blue-500" />
+                            Change Activity (Last 7 Days)
+                        </h3>
+                        <button
+                            onClick={() => exportToCSV(timelineData, 'change_activity_7days')}
+                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                            title="Export Data"
+                        >
+                            <Download size={12} />
+                        </button>
+                    </div>
+                    <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={timelineData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                                <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="count"
+                                    stroke="hsl(var(--primary))"
+                                    strokeWidth={3}
+                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
+                                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                                />
+                            </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

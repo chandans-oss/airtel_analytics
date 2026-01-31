@@ -218,7 +218,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
 }
 
 export function UnifiedMainDashboard() {
-    const { nodes, links, allEvents, configFailure, raInventory, setSelectedModule, setSelectedSubModule } = useInventoryStore();
+    const { nodes, links, allEvents, configFailure, raInventory, setSelectedModule, setSelectedSubModule, showNetworkMetrics, showAppMetrics } = useInventoryStore();
     const [view, setView] = useState<'main' | 'issues'>('main');
 
     // KPI Calculations
@@ -372,204 +372,217 @@ export function UnifiedMainDashboard() {
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            <div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <KPICard
-                        title="Device Monitoring"
-                        value={String(stats.device.val)}
-                        total={String(stats.device.total)}
-                        issueCount={stats.device.issues}
-                        icon={Database}
-                        onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('nodes');
-                        }}
-                        onIssuesClick={() => setView('issues')}
-                        exportData={stats.device.data}
-                        exportUpData={stats.device.upData}
-                        exportDownData={stats.device.downData}
-                    />
-                    <KPICard
-                        title="Link Health"
-                        value={String(stats.link.val)}
-                        total={String(stats.link.total)}
-                        issueCount={stats.link.issues}
-                        icon={Zap}
-                        onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
-                        }}
-                        onIssuesClick={() => setView('issues')}
-                        exportData={stats.link.data}
-                        exportUpData={stats.link.upData}
-                        exportDownData={stats.link.downData}
-                    />
-                    <KPICard
-                        title="Bandwidth Monitoring"
-                        value={String(stats.bw.val)}
-                        total={String(stats.bw.total)}
-                        issueCount={stats.bw.issues}
-                        icon={BarChart3}
-                        onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
-                        }}
-                        onIssuesClick={() => setView('issues')}
-                        exportData={stats.bw.data}
-                        exportUpData={stats.bw.upData}
-                        exportDownData={stats.bw.downData}
-                    />
-                    <KPICard
-                        title="Jitter Analysis"
-                        value={String(stats.jitter.val)}
-                        total={String(stats.jitter.total)}
-                        issueCount={stats.jitter.issues}
-                        icon={Activity}
-                        onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
-                        }}
-                        onIssuesClick={() => setView('issues')}
-                        exportData={stats.jitter.data}
-                        exportUpData={stats.jitter.upData}
-                        exportDownData={stats.jitter.downData}
-                    />
-                    <KPICard
-                        title="Config Compliance"
-                        value={String(stats.config.val)}
-                        total={String(stats.config.total)}
-                        issueCount={stats.config.issues}
-                        icon={ShieldCheck}
-                        onClick={() => {
-                            setSelectedModule('config');
-                        }}
-                        onIssuesClick={() => setView('issues')}
-                        exportData={stats.config.data}
-                        exportUpData={stats.config.upData}
-                        exportDownData={stats.config.downData}
-                    />
+            {showNetworkMetrics && (
+                <div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <KPICard
+                            title="Device Monitoring"
+                            value={String(stats.device.val)}
+                            total={String(stats.device.total)}
+                            issueCount={stats.device.issues}
+                            icon={Database}
+                            onClick={() => {
+                                setSelectedModule('inventory');
+                                setSelectedSubModule('nodes');
+                            }}
+                            onIssuesClick={() => setView('issues')}
+                            exportData={stats.device.data}
+                            exportUpData={stats.device.upData}
+                            exportDownData={stats.device.downData}
+                        />
+                        <KPICard
+                            title="Link Health"
+                            value={String(stats.link.val)}
+                            total={String(stats.link.total)}
+                            issueCount={stats.link.issues}
+                            icon={Zap}
+                            onClick={() => {
+                                setSelectedModule('inventory');
+                                setSelectedSubModule('links');
+                            }}
+                            onIssuesClick={() => setView('issues')}
+                            exportData={stats.link.data}
+                            exportUpData={stats.link.upData}
+                            exportDownData={stats.link.downData}
+                        />
+                        <KPICard
+                            title="Bandwidth Monitoring"
+                            value={String(stats.bw.val)}
+                            total={String(stats.bw.total)}
+                            issueCount={stats.bw.issues}
+                            icon={BarChart3}
+                            onClick={() => {
+                                setSelectedModule('inventory');
+                                setSelectedSubModule('links');
+                            }}
+                            onIssuesClick={() => setView('issues')}
+                            exportData={stats.bw.data}
+                            exportUpData={stats.bw.upData}
+                            exportDownData={stats.bw.downData}
+                        />
+                        <KPICard
+                            title="Jitter Analysis"
+                            value={String(stats.jitter.val)}
+                            total={String(stats.jitter.total)}
+                            issueCount={stats.jitter.issues}
+                            icon={Activity}
+                            onClick={() => {
+                                setSelectedModule('inventory');
+                                setSelectedSubModule('links');
+                            }}
+                            onIssuesClick={() => setView('issues')}
+                            exportData={stats.jitter.data}
+                            exportUpData={stats.jitter.upData}
+                            exportDownData={stats.jitter.downData}
+                        />
+                        <KPICard
+                            title="Config Compliance"
+                            value={String(stats.config.val)}
+                            total={String(stats.config.total)}
+                            issueCount={stats.config.issues}
+                            icon={ShieldCheck}
+                            onClick={() => {
+                                setSelectedModule('config');
+                            }}
+                            onIssuesClick={() => setView('issues')}
+                            exportData={stats.config.data}
+                            exportUpData={stats.config.upData}
+                            exportDownData={stats.config.downData}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Operational Performance Metrics */}
             <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <KPICard
-                        title="QOS Score"
-                        value={String(stats.qos.val)}
-                        total={String(stats.qos.total)}
-                        issueCount={stats.qos.total - stats.qos.val}
-                        icon={Signal}
-                        exportData={stats.qos.data}
-                        exportUpData={stats.qos.upData}
-                        exportDownData={stats.qos.downData}
-                    />
-                    <KPICard
-                        title="CPU Load"
-                        value={String(stats.cpu.val)}
-                        total={String(stats.cpu.total)}
-                        issueCount={stats.cpu.total - stats.cpu.val}
-                        icon={Cpu}
-                        exportData={stats.cpu.data}
-                        exportUpData={stats.cpu.upData}
-                        exportDownData={stats.cpu.downData}
-                    />
-                    <KPICard
-                        title="Memory Usage"
-                        value={String(stats.memory.val)}
-                        total={String(stats.memory.total)}
-                        issueCount={stats.memory.total - stats.memory.val}
-                        icon={MemoryStick}
-                        exportData={stats.memory.data}
-                        exportUpData={stats.memory.upData}
-                        exportDownData={stats.memory.downData}
-                    />
-                    <KPICard
-                        title="System Uptime"
-                        value={String(stats.uptime.val)}
-                        total={String(stats.uptime.total)}
-                        issueCount={stats.uptime.total - stats.uptime.val}
-                        icon={Clock}
-                        exportData={stats.uptime.data}
-                        exportUpData={stats.uptime.upData}
-                        exportDownData={stats.uptime.downData}
-                    />
-                    <KPICard
-                        title="Link Errors"
-                        value={String(stats.errors.total - stats.errors.val)}
-                        total={String(stats.errors.total)}
-                        issueCount={stats.errors.total - stats.errors.val}
-                        icon={AlertTriangle}
-                        exportData={stats.errors.data}
-                        exportUpData={stats.errors.upData}
-                        exportDownData={stats.errors.downData}
-                    />
-                    <KPICard
-                        title="Reboot Counter"
-                        value={String(stats.reboot.val)}
-                        total={String(stats.reboot.total)}
-                        issueCount={0}
-                        icon={RefreshCcw}
-                        exportData={stats.reboot.data}
-                        exportUpData={stats.reboot.upData}
-                    />
-                    <KPICard
-                        title="BGP Sessions"
-                        value={String(stats.bgp.val)}
-                        total={String(stats.bgp.total)}
-                        issueCount={stats.bgp.total - stats.bgp.val}
-                        icon={Network}
-                        exportData={stats.bgp.data}
-                        exportUpData={stats.bgp.upData}
-                        exportDownData={stats.bgp.downData}
-                    />
-                    <KPICard
-                        title="Ticketing"
-                        value={String(stats.ticketing.val)}
-                        total={String(stats.ticketing.total)}
-                        issueCount={stats.ticketing.total - stats.ticketing.val}
-                        icon={Ticket}
-                        exportData={stats.ticketing.data}
-                        exportUpData={stats.ticketing.upData}
-                        exportDownData={stats.ticketing.downData}
-                    />
-                    <KPICard
-                        title="Mail Triggers"
-                        value={String(stats.mail.val)}
-                        total={String(stats.mail.total)}
-                        issueCount={0}
-                        icon={Mail}
-                        exportData={stats.mail.data}
-                        exportUpData={stats.mail.upData}
-                    />
-                    <KPICard
-                        title="RA Processing"
-                        value={String(stats.ra.val)}
-                        total={String(stats.ra.total)}
-                        issueCount={stats.ra.total - stats.ra.val}
-                        icon={FileSpreadsheet}
-                        exportData={stats.ra.data}
-                        exportUpData={stats.ra.upData}
-                        exportDownData={stats.ra.downData}
-                    />
-                    <KPICard
-                        title="Sched Disc"
-                        value={String(stats.disc.val)}
-                        total={String(stats.disc.total)}
-                        issueCount={0}
-                        icon={Calendar}
-                        exportData={stats.disc.data}
-                        exportUpData={stats.disc.upData}
-                    />
-                    <KPICard
-                        title="Sched Reports"
-                        value={String(stats.reports.val)}
-                        total={String(stats.reports.total)}
-                        issueCount={0}
-                        icon={FileSpreadsheet}
-                        exportData={stats.reports.data}
-                        exportUpData={stats.reports.upData}
-                    />
+                    {/* Network Based Stats */}
+                    {showNetworkMetrics && (
+                        <>
+                            <KPICard
+                                title="QOS Score"
+                                value={String(stats.qos.val)}
+                                total={String(stats.qos.total)}
+                                issueCount={stats.qos.total - stats.qos.val}
+                                icon={Signal}
+                                exportData={stats.qos.data}
+                                exportUpData={stats.qos.upData}
+                                exportDownData={stats.qos.downData}
+                            />
+                            <KPICard
+                                title="CPU Load"
+                                value={String(stats.cpu.val)}
+                                total={String(stats.cpu.total)}
+                                issueCount={stats.cpu.total - stats.cpu.val}
+                                icon={Cpu}
+                                exportData={stats.cpu.data}
+                                exportUpData={stats.cpu.upData}
+                                exportDownData={stats.cpu.downData}
+                            />
+                            <KPICard
+                                title="Memory Usage"
+                                value={String(stats.memory.val)}
+                                total={String(stats.memory.total)}
+                                issueCount={stats.memory.total - stats.memory.val}
+                                icon={MemoryStick}
+                                exportData={stats.memory.data}
+                                exportUpData={stats.memory.upData}
+                                exportDownData={stats.memory.downData}
+                            />
+                            <KPICard
+                                title="System Uptime"
+                                value={String(stats.uptime.val)}
+                                total={String(stats.uptime.total)}
+                                issueCount={stats.uptime.total - stats.uptime.val}
+                                icon={Clock}
+                                exportData={stats.uptime.data}
+                                exportUpData={stats.uptime.upData}
+                                exportDownData={stats.uptime.downData}
+                            />
+                            <KPICard
+                                title="Link Errors"
+                                value={String(stats.errors.total - stats.errors.val)}
+                                total={String(stats.errors.total)}
+                                issueCount={stats.errors.total - stats.errors.val}
+                                icon={AlertTriangle}
+                                exportData={stats.errors.data}
+                                exportUpData={stats.errors.upData}
+                                exportDownData={stats.errors.downData}
+                            />
+                            <KPICard
+                                title="Reboot Counter"
+                                value={String(stats.reboot.val)}
+                                total={String(stats.reboot.total)}
+                                issueCount={0}
+                                icon={RefreshCcw}
+                                exportData={stats.reboot.data}
+                                exportUpData={stats.reboot.upData}
+                            />
+                            <KPICard
+                                title="BGP Sessions"
+                                value={String(stats.bgp.val)}
+                                total={String(stats.bgp.total)}
+                                issueCount={stats.bgp.total - stats.bgp.val}
+                                icon={Network}
+                                exportData={stats.bgp.data}
+                                exportUpData={stats.bgp.upData}
+                                exportDownData={stats.bgp.downData}
+                            />
+                        </>
+                    )}
+
+                    {/* Application Specific Stats */}
+                    {showAppMetrics && (
+                        <>
+                            <KPICard
+                                title="Ticketing"
+                                value={String(stats.ticketing.val)}
+                                total={String(stats.ticketing.total)}
+                                issueCount={stats.ticketing.total - stats.ticketing.val}
+                                icon={Ticket}
+                                exportData={stats.ticketing.data}
+                                exportUpData={stats.ticketing.upData}
+                                exportDownData={stats.ticketing.downData}
+                            />
+                            <KPICard
+                                title="Mail Triggers"
+                                value={String(stats.mail.val)}
+                                total={String(stats.mail.total)}
+                                issueCount={0}
+                                icon={Mail}
+                                exportData={stats.mail.data}
+                                exportUpData={stats.mail.upData}
+                            />
+                            <KPICard
+                                title="RA Processing"
+                                value={String(stats.ra.val)}
+                                total={String(stats.ra.total)}
+                                issueCount={stats.ra.total - stats.ra.val}
+                                icon={FileSpreadsheet}
+                                exportData={stats.ra.data}
+                                exportUpData={stats.ra.upData}
+                                exportDownData={stats.ra.downData}
+                            />
+                            <KPICard
+                                title="Sched Disc"
+                                value={String(stats.disc.val)}
+                                total={String(stats.disc.total)}
+                                issueCount={0}
+                                icon={Calendar}
+                                exportData={stats.disc.data}
+                                exportUpData={stats.disc.upData}
+                            />
+                            <KPICard
+                                title="Sched Reports"
+                                value={String(stats.reports.val)}
+                                total={String(stats.reports.total)}
+                                issueCount={0}
+                                icon={FileSpreadsheet}
+                                exportData={stats.reports.data}
+                                exportUpData={stats.reports.upData}
+                            />
+                        </>
+                    )}
                 </div>
             </div>
         </div>

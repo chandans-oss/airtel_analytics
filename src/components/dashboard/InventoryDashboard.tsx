@@ -8,6 +8,7 @@ import { DrilldownHierarchy } from './DrilldownHierarchy';
 import { InterdependentAnalytics } from './InterdependentAnalytics';
 import { DataTable } from './DataTable';
 import { ProbableCauseAnalytics } from './ProbableCauseAnalytics';
+import { EventsDashboard } from './EventsDashboard';
 import { ConfigDownloadAnalytics } from './ConfigDownloadAnalytics';
 import {
   InventoryOpsModule,
@@ -70,7 +71,7 @@ export function InventoryDashboard() {
   const renderActiveModule = () => {
     switch (selectedModule) {
       case 'events':
-        return <ProbableCauseAnalytics />;
+        return <EventsDashboard />;
       case 'filteredEvents':
         return <ProbableCauseAnalytics filteredContext={true} />;
       case 'config':

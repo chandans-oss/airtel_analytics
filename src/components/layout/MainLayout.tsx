@@ -1,8 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { ToolSidebar } from './ToolSidebar';
-import { Bell, User, Search, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
-import { ThemeToggle } from '../ThemeToggle';
+import { User, SlidersHorizontal, LayoutGrid, Network } from 'lucide-react';
 import { useInventoryStore } from '@/store/inventoryStore';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +17,11 @@ export function MainLayout({ children }: MainLayoutProps) {
   const {
     toolSidebarOpen,
     setToolSidebarOpen,
-    selectedModule
+    selectedModule,
+    showNetworkMetrics,
+    showAppMetrics,
+    toggleNetworkMetrics,
+    toggleAppMetrics
   } = useInventoryStore();
 
   const isToolModule = ['inventory', 'events', 'config'].includes(selectedModule);
@@ -52,17 +55,55 @@ export function MainLayout({ children }: MainLayoutProps) {
             <HeaderKPIs />
           </div>
 
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              <Bell size={18} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </button>
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
-                <User size={14} className="text-primary" />
+          <div className="flex items-center gap-4">
+            {/* Network Toggle */}
+            <div
+              className="flex items-center gap-2 cursor-pointer group select-none"
+              onClick={toggleNetworkMetrics}
+              title="Toggle Network Metrics"
+            >
+              <div className={cn(
+                "w-9 h-5 rounded-full relative transition-colors duration-300 shadow-inner",
+                showNetworkMetrics ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
+              )}>
+                <div className={cn(
+                  "absolute top-1 left-1 bg-white h-3 w-3 rounded-full shadow-sm transition-all duration-300",
+                  showNetworkMetrics ? "translate-x-4" : "translate-x-0"
+                )} />
               </div>
-              <span className="text-sm font-medium">NOC Admin</span>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
+                showNetworkMetrics ? "text-emerald-600" : "text-muted-foreground"
+              )}>
+                Network
+              </span>
+            </div>
+
+            {/* App Toggle */}
+            <div
+              className="flex items-center gap-2 cursor-pointer group select-none mr-4"
+              onClick={toggleAppMetrics}
+              title="Toggle Application Metrics"
+            >
+              <div className={cn(
+                "w-9 h-5 rounded-full relative transition-colors duration-300 shadow-inner",
+                showAppMetrics ? "bg-sky-500" : "bg-slate-200 dark:bg-slate-700"
+              )}>
+                <div className={cn(
+                  "absolute top-1 left-1 bg-white h-3 w-3 rounded-full shadow-sm transition-all duration-300",
+                  showAppMetrics ? "translate-x-4" : "translate-x-0"
+                )} />
+              </div>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
+                showAppMetrics ? "text-sky-600" : "text-muted-foreground"
+              )}>
+                Application
+              </span>
+            </div>
+
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors" title="NOC Admin">
+              <User size={16} />
             </div>
           </div>
         </header>

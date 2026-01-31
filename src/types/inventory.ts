@@ -126,9 +126,12 @@ export interface RAInventoryData {
 export interface ConfigCalendarData {
   date: string;
   event: 'CONFIG_PUSH' | 'BACKUP' | 'DIFF';
-  state: 'SUCCESS' | 'FAILED' | 'Scheduled';
+  state: 'SUCCESS' | 'FAILED' | 'Scheduled' | 'FAILURE';
   deviceName: string;
   ip: string;
+  vendor?: string;
+  message?: string;
+  failureReason?: string;
 }
 
 export interface ConfigFailureData {

@@ -53,6 +53,11 @@ interface InventoryState {
   showTable: boolean;
   activeTopologyView: 'nodes' | 'links';
 
+  // Event Filters
+  eventSeverities: string[];
+  eventType: string;
+  showSuppressed: boolean;
+
   // Actions
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
@@ -85,6 +90,11 @@ interface InventoryState {
   setToolSidebarOpen: (open: boolean) => void;
   setInventorySidebarOpen: (open: boolean) => void;
   setActiveTopologyView: (view: 'nodes' | 'links') => void;
+
+  // Event Filter Actions
+  setEventSeverities: (severities: string[]) => void;
+  setEventType: (type: string) => void;
+  setShowSuppressed: (show: boolean) => void;
 
   // Computed
   getStats: () => InventoryStats;
@@ -172,6 +182,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   toolSidebarOpen: false,
   inventorySidebarOpen: true,
   showTable: false,
+
+  // Event Filters
+  eventSeverities: ['Critical', 'Warning', 'Info', 'Resolved'],
+  eventType: 'All Types',
+  showSuppressed: false,
+  setEventSeverities: (eventSeverities) => set({ eventSeverities }),
+  setEventType: (eventType) => set({ eventType }),
+  setShowSuppressed: (showSuppressed) => set({ showSuppressed }),
 
   showNetworkMetrics: true,
   showAppMetrics: true,

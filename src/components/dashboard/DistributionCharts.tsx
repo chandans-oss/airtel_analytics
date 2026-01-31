@@ -93,25 +93,37 @@ const CustomBarLabel = (props: any) => {
   const { x, y, width, height, value, onExport, isMini } = props;
   const categoryName = props.payload?.name;
 
-  // x is the start of the bar, width is the bar length. 
-  // We place the label at the end of the bar plus a margin.
-  const margin = isMini ? 8 : 12;
+  // Determine if we fit inside the bar
+  const isInside = width > 70;
+  const margin = isMini ? 6 : 8;
   const opacity = props.payload?.opacity ?? 1;
 
-  // If the bar is faded (not selected), hide the count and download icon
   if (opacity < 1) return null;
 
+  // If inside: align end (right) against the bar end.
+  // If outside: align start (left) after the bar end.
+  const xPos = isInside ? (x + width - margin) : (x + width + margin);
+  const anchor = isInside ? "end" : "start";
+  // For download icon offset:
+  // If inside: we need to move it to the LEFT of the text.
+  // If outside: we need to move it to the RIGHT of the text.
+  const textLengthEstimate = String(value).length * (isMini ? 7 : 9);
+  const iconOffset = isInside
+    ? -(textLengthEstimate + 12)
+    : (textLengthEstimate + 8);
+
   return (
-    <g transform={`translate(${x + width + margin}, ${y + (height ? height / 2 : 0)})`}>
+    <g transform={`translate(${xPos}, ${y + (height ? height / 2 : 0)})`}>
       <text
         x={0}
         y={0}
         dy={4}
-        textAnchor="start"
-        fill="hsl(var(--foreground))"
+        textAnchor={anchor}
+        fill={isInside ? "#fff" : "hsl(var(--foreground))"}
         fontSize={isMini ? 10 : 12}
         fontWeight="bold"
         className="tabular-nums"
+        style={{ textShadow: isInside ? '0 1px 2px rgba(0,0,0,0.4)' : 'none' }}
       >
         {value}
       </text>
@@ -123,11 +135,95 @@ const CustomBarLabel = (props: any) => {
             onExport(categoryName);
           }}
           style={{ cursor: 'pointer', pointerEvents: 'all' }}
-          transform={`translate(${String(value).length * (isMini ? 8 : 10) + 10}, -6)`}
-          className="opacity-40 hover:opacity-100 transition-opacity"
+          transform={`translate(${iconOffset}, -6)`}
+          className="opacity-70 hover:opacity-100 hover:scale-110 transition-all"
         >
           <rect x="-6" y="-6" width="20" height="20" fill="transparent" />
-          <Download size={isMini ? 10 : 12} className="text-muted-foreground" />
+          <Download
+            size={isMini ? 10 : 12}
+            className={isInside ? "text-white drop-shadow-md" : "text-muted-foreground"}
+            strokeWidth={2.5}
+          />
+        </g>
+      )}
+    </g>
+  );
+};
+
+interface CustomTreemapContentProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  name?: string;
+  value?: number;
+  onExport?: (name: string) => void;
+  // Recharts specific props that are injected
+  depth?: number;
+  index?: number;
+  colors?: string[];
+  [key: string]: any;
+}
+
+const CustomTreemapContent = (props: CustomTreemapContentProps) => {
+  const { x, y, width, height, name, value, onExport, depth } = props;
+
+  // Basic bounds check to avoid rendering in tiny boxes
+  if (!width || !height || width < 40 || height < 40) return null;
+
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          fill: props.fill || '#00A58E',
+          stroke: '#fff',
+          strokeWidth: 2,
+        }}
+      />
+
+      {/* Name Link/Text */}
+      <text
+        x={(x || 0) + (width / 2)}
+        y={(y || 0) + (height / 2) - 8}
+        textAnchor="middle"
+        fill="#fff"
+        fontSize={10}
+        fontWeight="bold"
+        style={{ pointerEvents: 'none' }}
+      >
+        {name?.substring(0, width / 7)}
+      </text>
+
+      {/* Value */}
+      <text
+        x={(x || 0) + (width / 2)}
+        y={(y || 0) + (height / 2) + 6}
+        textAnchor="middle"
+        fill="#fff"
+        fontSize={12}
+        fontWeight="black"
+        style={{ pointerEvents: 'none' }}
+      >
+        {value}
+      </text>
+
+      {/* Export Icon */}
+      {onExport && name && (
+        <g
+          transform={`translate(${(x || 0) + (width / 2) - 6}, ${(y || 0) + (height / 2) + 14})`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onExport(name);
+          }}
+          className="cursor-pointer opacity-70 hover:opacity-100"
+          style={{ pointerEvents: 'all' }}
+        >
+          <rect x="-4" y="-4" width="20" height="20" fill="transparent" />
+          <Download size={12} className="text-white" />
         </g>
       )}
     </g>
@@ -159,7 +255,7 @@ export function UniversalChartRenderer({ data, chartType, onPointClick, variant 
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ ...margin, right: (margin.right || 0) + 50 }}
+            margin={{ ...margin, right: (margin.right || 0) + 20 }}
             barCategoryGap={isMini ? "10%" : "20%"}
             barGap={2}
           >
@@ -282,6 +378,7 @@ export function UniversalChartRenderer({ data, chartType, onPointClick, variant 
             aspectRatio={4 / 3}
             stroke="#fff"
             fill={COLORS.primary}
+            content={<CustomTreemapContent onExport={onPointExport} />}
           >
             <Tooltip contentStyle={customTooltipStyle} itemStyle={customItemStyle} />
           </Treemap>
@@ -320,46 +417,44 @@ export function UniversalChartRenderer({ data, chartType, onPointClick, variant 
               onClick={(entry) => onPointClick(entry.name)}
               onContextMenu={(data: any, index: number, e: any) => onContextMenu && onContextMenu(e, data.name)}
               style={{ cursor: 'pointer' }}
-              labelLine={true}
+              labelLine={false}
               label={({ cx, cy, midAngle, innerRadius, outerRadius, value, name, percent, index }) => {
                 const RADIAN = Math.PI / 180;
-                const radius = outerRadius + 20;
+                // Position inside the slice
+                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                 const x = cx + radius * Math.cos(-midAngle * RADIAN);
                 const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-                const entry = data[index];
-                const opacity = entry?.opacity ?? 1;
-
-                // Hide labels for non-selected slices to keep UI clean
-                if (opacity < 1) return null;
-                if (percent < 0.05 && !isMini) return null;
+                // Only render if same slice is big enough
+                if (percent < 0.05) return null;
 
                 return (
                   <g transform={`translate(${x}, ${y})`}>
                     <text
                       x={0}
-                      y={0}
-                      fill="hsl(var(--foreground))"
-                      textAnchor={x > cx ? 'start' : 'end'}
+                      y={-6}
+                      fill="white"
+                      textAnchor="middle"
                       dominantBaseline="central"
-                      fontSize={isMini ? 10 : 11}
-                      fontWeight="700"
+                      fontSize={isMini ? 12 : 14}
+                      fontWeight="black"
+                      style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
                     >
-                      {isMini ? value : `${name}: ${value}`}
+                      {value}
                     </text>
                     {onPointExport && (
                       <g
-                        transform={`translate(${x > cx ? 10 + (isMini ? String(value).length * 6 : (String(name).length + String(value).length) * 6) : -20}, -8)`}
+                        transform={`translate(-6, 4)`}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           onPointExport(name);
                         }}
-                        className="opacity-40 hover:opacity-100 transition-opacity cursor-pointer group/export"
+                        className="opacity-80 hover:opacity-100 cursor-pointer"
                         style={{ pointerEvents: 'all' }}
                       >
-                        <rect x="-8" y="-8" width="24" height="24" fill="rgba(0,0,0,0)" />
-                        <Download size={isMini ? 10 : 11} className="text-primary" />
+                        <rect x="-4" y="-4" width="20" height="20" fill="transparent" />
+                        <Download size={12} className="text-white drop-shadow-md" strokeWidth={3} />
                       </g>
                     )}
                   </g>

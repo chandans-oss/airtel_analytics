@@ -191,9 +191,12 @@ function AnalyticsWidget({ level, type, isExpanded, customHeight, onToggleExpand
     onFilter: (val: string) => void
 }) {
     const { getFilteredNodesExcluding, getFilteredLinksExcluding, nodeFilters, linkFilters, setSelectedModule, toggleFilter } = useInventoryStore();
-    const [chartType, setChartType] = useState<ChartType>(
-        (level.field === 'status' || level.field === 'linkStatus') ? 'donut' : 'bar'
-    );
+    const [chartType, setChartType] = useState<ChartType>(() => {
+        if (level.field === 'status' || level.field === 'linkStatus') return 'donut';
+        if (level.field === 'region' || level.field === 'state') return 'pie';
+        if (level.field === 'make' || level.field === 'deviceType') return 'treemap';
+        return 'bar';
+    });
     const [customTitle, setCustomTitle] = useState(level.label);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, name: string } | null>(null);
 

@@ -134,6 +134,8 @@ const defaultNodeLevels: HierarchyLevel[] = [
 
 const defaultLinkLevels: HierarchyLevel[] = [
   { id: 'linkStatus', label: 'Status', field: 'linkStatus' },
+  { id: 'snmpStatus', label: 'SNMP Status', field: 'snmpStatus' },
+  { id: 'pingStatus', label: 'Ping Status', field: 'pingStatus' },
   { id: 'serviceFlavor', label: 'Service Flavor', field: 'serviceFlavor', expectedValues: ['Fully Managed', 'Partially Managed'] },
   { id: 'make', label: 'Make', field: 'make' },
   { id: 'region', label: 'Region', field: 'region' },

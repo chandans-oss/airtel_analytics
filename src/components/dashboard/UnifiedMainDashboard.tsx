@@ -15,7 +15,17 @@ import {
     LayoutDashboard,
     Search,
     MessageSquare,
-    ChevronLeft
+    ChevronLeft,
+    Cpu,
+    MemoryStick,
+    Clock,
+    RefreshCcw,
+    Network,
+    Ticket,
+    Mail,
+    FileSpreadsheet,
+    Calendar,
+    Signal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportToCSV } from '@/utils/exportUtils';
@@ -40,14 +50,45 @@ interface KPIProps {
     issueCount: number;
     onClick?: () => void;
     onIssuesClick?: () => void;
+    exportData?: any[];
+    exportUpData?: any[];
+    exportDownData?: any[];
 }
 
-function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick }: KPIProps) {
+function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick, exportData, exportUpData, exportDownData }: KPIProps) {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const isConfig = title.toLowerCase().includes('config');
     const upLabel = isConfig ? 'SUCCESS' : 'UP';
     const downLabel = isConfig ? 'FAILURE' : 'DOWN';
+
+    const numValue = parseInt(String(value).replace(/,/g, '')) || 0;
+    const numTotal = parseInt(String(total).replace(/,/g, '')) || 1;
+    const percentage = Math.round((numValue / numTotal) * 100);
+
+    const statusColor = useMemo(() => {
+        if (percentage === 100) return {
+            bg: 'bg-emerald-500/10',
+            border: 'border-emerald-500/50',
+            text: 'text-emerald-600',
+            pill: 'text-emerald-700 border-emerald-600/60 bg-emerald-500/10',
+            hover: 'hover:border-emerald-500/80'
+        };
+        if (percentage > 80) return {
+            bg: 'bg-amber-500/10',
+            border: 'border-amber-500/50',
+            text: 'text-amber-600',
+            pill: 'text-amber-700 border-amber-600/60 bg-amber-500/10',
+            hover: 'hover:border-amber-500/80'
+        };
+        return {
+            bg: 'bg-rose-500/10',
+            border: 'border-rose-500/50',
+            text: 'text-rose-600',
+            pill: 'text-rose-700 border-rose-600/60 bg-rose-500/10',
+            hover: 'hover:border-rose-500/80'
+        };
+    }, [percentage]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -63,50 +104,28 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
         };
     }, [showMenu]);
 
-    const statusColor = useMemo(() => {
-        if (issueCount === 0) return {
-            bg: 'bg-emerald-500/5',
-            border: 'border-emerald-500/20',
-            text: 'text-emerald-500',
-            hover: 'hover:border-emerald-500/50'
-        };
-        if (issueCount <= 8) return {
-            bg: 'bg-amber-500/5',
-            border: 'border-amber-500/20',
-            text: 'text-amber-500',
-            hover: 'hover:border-amber-500/50'
-        };
-        return {
-            bg: 'bg-rose-500/5',
-            border: 'border-rose-500/20',
-            text: 'text-rose-500',
-            hover: 'hover:border-rose-500/50'
-        };
-    }, [issueCount]);
-
     return (
         <div
             onClick={onClick}
             className={cn(
-                "group relative rounded-2xl border px-4 py-3 transition-all duration-300 backdrop-blur-md overflow-visible",
+                "group relative rounded-2xl border px-4 py-3 transition-all duration-300 backdrop-blur-md overflow-visible flex flex-col justify-between min-h-[110px]",
                 statusColor.bg,
                 statusColor.border,
-                statusColor.hover,
-                onClick && "cursor-pointer hover:shadow-lg",
+                // statusColor.hover, // Removed specific hover border to avoid conflict or excessive visual noise
+                onClick && "cursor-pointer hover:shadow-lg hover:bg-card/80", // Darker hover
                 showMenu && "z-50 ring-2 ring-primary/20 shadow-2xl scale-[1.02]"
             )}
+            style={{
+                boxShadow: percentage <= 80 ? '0 4px 12px rgba(225, 29, 72, 0.1)' : undefined
+            }}
             onContextMenu={(e) => {
                 e.preventDefault();
-                if (issueCount > 0) {
-                    setShowMenu(true);
-                }
+                if (issueCount > 0) setShowMenu(true);
             }}
         >
-
-
-            {/* Top Row: Title and Redirect */}
-            <div className="flex items-start justify-between mb-0">
-                <h3 className="text-sm font-black uppercase tracking-wider text-foreground/90 font-display">
+            {/* Top Row: Title */}
+            <div className="flex items-start justify-between mb-1">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-foreground/80 font-display leading-tight max-w-[80%]">
                     {title}
                 </h3>
                 <div className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
@@ -114,59 +133,84 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 </div>
             </div>
 
-            {/* Center: Total Number */}
-            <div className="flex justify-center my-0">
-                <span className="text-4xl font-black tabular-nums tracking-tighter text-foreground drop-shadow-sm">
+            {/* Middle Row: Big Total & Percentage Pill */}
+            <div className="flex items-center justify-between mt-1 mb-2">
+                <span
+                    className="text-4xl font-black tabular-nums tracking-tighter text-foreground drop-shadow-sm cursor-pointer hover:text-primary transition-colors"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (exportData && exportData.length > 0) {
+                            exportToCSV(exportData, `${title.replace(/\s+/g, '_')}_Total_Export`);
+                        }
+                    }}
+                    title="Click to Export Full Data"
+                >
                     {total}
                 </span>
+
+                <div className={cn(
+                    "px-2 py-0.5 rounded-lg border-2 font-black text-sm tabular-nums tracking-tight shadow-sm",
+                    statusColor.pill
+                )}>
+                    {percentage}%
+                </div>
             </div>
 
-            {/* Bottom Row: Healthy and Issues */}
-            <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-1.5">
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-1">
-                            <span className="text-xl font-black text-emerald-500 tabular-nums">{value}</span>
-                            <ArrowUp size={16} className="text-emerald-500" strokeWidth={3} />
-                        </div>
-                        <span className="text-[9px] font-bold text-emerald-500/60 uppercase tracking-tighter">{upLabel}</span>
-                    </div>
+            {/* Bottom Row: Up/Down Stats */}
+            <div className="flex items-center gap-4 mt-auto">
+                {/* UP STATS */}
+                <div
+                    className="flex items-baseline gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (exportUpData && exportUpData.length > 0) {
+                            exportToCSV(exportUpData, `${title.replace(/\s+/g, '_')}_${upLabel}_Export`);
+                        }
+                    }}
+                    title={`Export ${upLabel} Data`}
+                >
+                    <span className="text-lg font-black text-emerald-600 tabular-nums">{value}</span>
+                    <ArrowUp size={14} className="text-emerald-600 translate-y-[2px]" strokeWidth={3} />
                 </div>
 
+                {/* DOWN STATS - Relative for Menu */}
                 <div
-                    className="relative flex flex-col items-center"
+                    className="relative flex items-baseline gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (exportDownData && exportDownData.length > 0) {
+                            exportToCSV(exportDownData, `${title.replace(/\s+/g, '_')}_${downLabel}_Export`);
+                        }
+                    }}
+                    title={`Export ${downLabel} Data`}
                 >
-                    {/* Right-Click Context Menu */}
+                    <span className="text-lg font-black text-rose-600 tabular-nums">{issueCount}</span>
+                    <ArrowDown size={14} className="text-rose-600 translate-y-[2px]" strokeWidth={3} />
+                    {/* <span className="text-[9px] font-bold text-rose-600/60 uppercase tracking-tighter ml-0.5">{downLabel}</span> */}
+
+                    {/* Context Menu (Attached to Down Stats area usually, or card center) */}
                     {showMenu && (
                         <div
                             ref={menuRef}
-                            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-[50] animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200"
+                            className="absolute bottom-full left-0 mb-2 z-[50] animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onIssuesClick?.();
                                 setShowMenu(false);
                             }}
                         >
-                            <div className="bg-rose-600 border border-white/30 shadow-[0_20px_50px_rgba(225,29,72,0.6)] rounded-lg p-1 min-w-[140px]">
+                            <div className="bg-rose-600 border border-white/30 shadow-[0_10px_30px_rgba(225,29,72,0.5)] rounded-lg p-1 min-w-[120px]">
                                 <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/10 text-white transition-all group/item cursor-pointer">
-                                    <div className="p-1.5 rounded bg-white/20">
-                                        <AlertTriangle size={14} className="text-white animate-pulse" />
+                                    <div className="p-1 rounded bg-white/20">
+                                        <AlertTriangle size={12} className="text-white animate-pulse" />
                                     </div>
                                     <div className="flex flex-col items-start text-left">
-                                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Analyze {downLabel}</span>
-                                        <span className="text-[8px] opacity-80 font-bold uppercase tracking-tighter mt-0.5">View details</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">Analyze {downLabel}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
-
-
-                    <div className="flex items-center gap-1">
-                        <span className="text-xl font-black text-rose-500 tabular-nums">{issueCount}</span>
-                        <ArrowDown size={16} className="text-rose-500" strokeWidth={3} />
-                    </div>
-                    <span className="text-[9px] font-bold text-rose-500/60 uppercase tracking-tighter">{downLabel}</span>
                 </div>
             </div>
         </div>
@@ -174,35 +218,84 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
 }
 
 export function UnifiedMainDashboard() {
-    const { nodes, links, allEvents, configFailure, setSelectedModule, setSelectedSubModule } = useInventoryStore();
+    const { nodes, links, allEvents, configFailure, raInventory, setSelectedModule, setSelectedSubModule } = useInventoryStore();
     const [view, setView] = useState<'main' | 'issues'>('main');
 
     // KPI Calculations
     const stats = useMemo(() => {
         const totalNodes = nodes.length || 100;
         const totalLinks = links.length || 100;
+        const totalEvents = allEvents.length || 100;
 
-        const deviceIssues = nodes.filter(n => n.snmpStatus === 'DOWN' || n.status === 'DOWN').length;
-        const linkIssues = links.filter(l => l.linkStatus === 'DOWN').length;
-        const bwIssues = links.filter(l => (l.utilization || 0) > 85).length;
-        const jitterIssues = links.filter(l => (l.performanceScore || 100) < 60).length;
-        const configIssues = configFailure.length;
+        // Base Data Filtering
+        const deviceDown = nodes.filter(n => n.snmpStatus === 'DOWN' || n.status === 'DOWN');
+        const deviceUp = nodes.filter(n => !(n.snmpStatus === 'DOWN' || n.status === 'DOWN'));
 
-        const deviceMonitored = totalNodes - deviceIssues;
-        const linksMonitored = totalLinks - linkIssues;
-        const bwMonitored = totalLinks - bwIssues;
-        const jitterMonitored = totalLinks - jitterIssues;
-        const configMonitored = totalNodes - configIssues;
+        const linkDown = links.filter(l => l.linkStatus === 'DOWN');
+        const linkUp = links.filter(l => l.linkStatus !== 'DOWN');
+
+        const bwIssues = links.filter(l => (l.utilization || 0) > 85);
+        const bwHealthy = links.filter(l => (l.utilization || 0) <= 85);
+
+        const jitterIssues = links.filter(l => (l.performanceScore || 100) < 60);
+        const jitterHealthy = links.filter(l => (l.performanceScore || 100) >= 60);
+
+        const configIssues = configFailure;
+        const configSuccess = nodes.filter(n => !configFailure.find(c => c.deviceName === n.deviceName));
+
+        // New Metrics Data Filtering
+        const qosHealthyData = links.filter(l => (l.performanceScore || 0) > 90);
+        const qosIssuesData = links.filter(l => (l.performanceScore || 0) <= 90);
+
+        // Simulating data partitions for metrics that don't have explicit backing data in mock
+        const cpuIssuesData = nodes.slice(0, Math.floor(totalNodes * 0.08));
+        const cpuHealthyData = nodes.slice(Math.floor(totalNodes * 0.08));
+
+        const memIssuesData = nodes.slice(0, Math.floor(totalNodes * 0.12));
+        const memHealthyData = nodes.slice(Math.floor(totalNodes * 0.12));
+
+        const uptimeIssuesData = nodes.filter(n => n.status === 'DOWN');
+        const uptimeHealthyData = nodes.filter(n => n.status === 'UP');
+
+        const errorsHealthyData = links.filter(l => !l.errors || l.errors === 0);
+        const errorsIssuesData = links.filter(l => l.errors && l.errors > 0);
+
+        const rebootData = nodes.slice(0, Math.floor(totalNodes * 0.05));
+
+        const bgpHealthyData = links.filter(l => l.peering && l.peering !== 'None');
+        const bgpIssuesData = links.filter(l => !l.peering || l.peering === 'None'); // Simplified proxy
+
+        const ticketsClosedData = allEvents.filter(e => e.srStatus === 'Closed');
+        const ticketsOpenData = allEvents.filter(e => e.srStatus !== 'Closed');
+
+        const mailData = allEvents.filter(e => e.category === 'Notification');
+
+        const raCompletedData = raInventory.filter(r => r.status === 'Completed');
+        const raPendingData = raInventory.filter(r => r.status !== 'Completed');
 
         return {
-            device: { val: deviceMonitored, total: totalNodes, issues: deviceIssues },
-            link: { val: linksMonitored, total: totalLinks, issues: linkIssues },
-            bw: { val: bwMonitored, total: totalLinks, issues: bwIssues },
-            jitter: { val: jitterMonitored, total: totalLinks, issues: jitterIssues },
-            config: { val: configMonitored, total: totalNodes, issues: configIssues },
-            critical: { issues: allEvents.filter(e => e.severity === 'CRITICAL').length }
+            device: { val: deviceUp.length, total: totalNodes, issues: deviceDown.length, data: nodes, upData: deviceUp, downData: deviceDown },
+            link: { val: linkUp.length, total: totalLinks, issues: linkDown.length, data: links, upData: linkUp, downData: linkDown },
+            bw: { val: bwHealthy.length, total: totalLinks, issues: bwIssues.length, data: links, upData: bwHealthy, downData: bwIssues },
+            jitter: { val: jitterHealthy.length, total: totalLinks, issues: jitterIssues.length, data: links, upData: jitterHealthy, downData: jitterIssues },
+            config: { val: configSuccess.length, total: totalNodes, issues: configIssues.length, data: nodes, upData: configSuccess, downData: configIssues },
+            critical: { issues: allEvents.filter(e => e.severity === 'CRITICAL').length },
+
+            // New Metrics
+            qos: { val: qosHealthyData.length, total: totalLinks, data: links, upData: qosHealthyData, downData: qosIssuesData },
+            cpu: { val: cpuHealthyData.length, total: totalNodes, data: nodes, upData: cpuHealthyData, downData: cpuIssuesData },
+            memory: { val: memHealthyData.length, total: totalNodes, data: nodes, upData: memHealthyData, downData: memIssuesData },
+            uptime: { val: uptimeHealthyData.length, total: totalNodes, data: nodes, upData: uptimeHealthyData, downData: uptimeIssuesData },
+            errors: { val: errorsHealthyData.length, total: totalLinks, data: links, upData: errorsHealthyData, downData: errorsIssuesData },
+            reboot: { val: rebootData.length, total: totalNodes, data: nodes, upData: rebootData, downData: [] }, // Reboot "good" isn't exactly standard, just export count
+            bgp: { val: bgpHealthyData.length, total: totalLinks, data: links, upData: bgpHealthyData, downData: bgpIssuesData },
+            ticketing: { val: ticketsClosedData.length, total: allEvents.length, data: allEvents, upData: ticketsClosedData, downData: ticketsOpenData },
+            mail: { val: mailData.length, total: allEvents.length, data: allEvents, upData: mailData, downData: [] },
+            ra: { val: raCompletedData.length, total: raInventory.length, data: raInventory, upData: raCompletedData, downData: raPendingData },
+            disc: { val: nodes.length, total: totalNodes, data: nodes, upData: nodes, downData: [] },
+            reports: { val: 45, total: 50, data: [], upData: [], downData: [] },
         };
-    }, [nodes, links, configFailure, allEvents]);
+    }, [nodes, links, configFailure, allEvents, raInventory]);
 
     const issueCategories = useMemo(() => {
         const linkDown = links.filter(l => l.linkStatus === 'DOWN');
@@ -292,6 +385,9 @@ export function UnifiedMainDashboard() {
                             setSelectedSubModule('nodes');
                         }}
                         onIssuesClick={() => setView('issues')}
+                        exportData={stats.device.data}
+                        exportUpData={stats.device.upData}
+                        exportDownData={stats.device.downData}
                     />
                     <KPICard
                         title="Link Health"
@@ -304,6 +400,9 @@ export function UnifiedMainDashboard() {
                             setSelectedSubModule('links');
                         }}
                         onIssuesClick={() => setView('issues')}
+                        exportData={stats.link.data}
+                        exportUpData={stats.link.upData}
+                        exportDownData={stats.link.downData}
                     />
                     <KPICard
                         title="Bandwidth Monitoring"
@@ -316,6 +415,9 @@ export function UnifiedMainDashboard() {
                             setSelectedSubModule('links');
                         }}
                         onIssuesClick={() => setView('issues')}
+                        exportData={stats.bw.data}
+                        exportUpData={stats.bw.upData}
+                        exportDownData={stats.bw.downData}
                     />
                     <KPICard
                         title="Jitter Analysis"
@@ -328,6 +430,9 @@ export function UnifiedMainDashboard() {
                             setSelectedSubModule('links');
                         }}
                         onIssuesClick={() => setView('issues')}
+                        exportData={stats.jitter.data}
+                        exportUpData={stats.jitter.upData}
+                        exportDownData={stats.jitter.downData}
                     />
                     <KPICard
                         title="Config Compliance"
@@ -339,6 +444,131 @@ export function UnifiedMainDashboard() {
                             setSelectedModule('config');
                         }}
                         onIssuesClick={() => setView('issues')}
+                        exportData={stats.config.data}
+                        exportUpData={stats.config.upData}
+                        exportDownData={stats.config.downData}
+                    />
+                </div>
+            </div>
+
+            {/* Operational Performance Metrics */}
+            <div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <KPICard
+                        title="QOS Score"
+                        value={String(stats.qos.val)}
+                        total={String(stats.qos.total)}
+                        issueCount={stats.qos.total - stats.qos.val}
+                        icon={Signal}
+                        exportData={stats.qos.data}
+                        exportUpData={stats.qos.upData}
+                        exportDownData={stats.qos.downData}
+                    />
+                    <KPICard
+                        title="CPU Load"
+                        value={String(stats.cpu.val)}
+                        total={String(stats.cpu.total)}
+                        issueCount={stats.cpu.total - stats.cpu.val}
+                        icon={Cpu}
+                        exportData={stats.cpu.data}
+                        exportUpData={stats.cpu.upData}
+                        exportDownData={stats.cpu.downData}
+                    />
+                    <KPICard
+                        title="Memory Usage"
+                        value={String(stats.memory.val)}
+                        total={String(stats.memory.total)}
+                        issueCount={stats.memory.total - stats.memory.val}
+                        icon={MemoryStick}
+                        exportData={stats.memory.data}
+                        exportUpData={stats.memory.upData}
+                        exportDownData={stats.memory.downData}
+                    />
+                    <KPICard
+                        title="System Uptime"
+                        value={String(stats.uptime.val)}
+                        total={String(stats.uptime.total)}
+                        issueCount={stats.uptime.total - stats.uptime.val}
+                        icon={Clock}
+                        exportData={stats.uptime.data}
+                        exportUpData={stats.uptime.upData}
+                        exportDownData={stats.uptime.downData}
+                    />
+                    <KPICard
+                        title="Link Errors"
+                        value={String(stats.errors.total - stats.errors.val)}
+                        total={String(stats.errors.total)}
+                        issueCount={stats.errors.total - stats.errors.val}
+                        icon={AlertTriangle}
+                        exportData={stats.errors.data}
+                        exportUpData={stats.errors.upData}
+                        exportDownData={stats.errors.downData}
+                    />
+                    <KPICard
+                        title="Reboot Counter"
+                        value={String(stats.reboot.val)}
+                        total={String(stats.reboot.total)}
+                        issueCount={0}
+                        icon={RefreshCcw}
+                        exportData={stats.reboot.data}
+                        exportUpData={stats.reboot.upData}
+                    />
+                    <KPICard
+                        title="BGP Sessions"
+                        value={String(stats.bgp.val)}
+                        total={String(stats.bgp.total)}
+                        issueCount={stats.bgp.total - stats.bgp.val}
+                        icon={Network}
+                        exportData={stats.bgp.data}
+                        exportUpData={stats.bgp.upData}
+                        exportDownData={stats.bgp.downData}
+                    />
+                    <KPICard
+                        title="Ticketing"
+                        value={String(stats.ticketing.val)}
+                        total={String(stats.ticketing.total)}
+                        issueCount={stats.ticketing.total - stats.ticketing.val}
+                        icon={Ticket}
+                        exportData={stats.ticketing.data}
+                        exportUpData={stats.ticketing.upData}
+                        exportDownData={stats.ticketing.downData}
+                    />
+                    <KPICard
+                        title="Mail Triggers"
+                        value={String(stats.mail.val)}
+                        total={String(stats.mail.total)}
+                        issueCount={0}
+                        icon={Mail}
+                        exportData={stats.mail.data}
+                        exportUpData={stats.mail.upData}
+                    />
+                    <KPICard
+                        title="RA Processing"
+                        value={String(stats.ra.val)}
+                        total={String(stats.ra.total)}
+                        issueCount={stats.ra.total - stats.ra.val}
+                        icon={FileSpreadsheet}
+                        exportData={stats.ra.data}
+                        exportUpData={stats.ra.upData}
+                        exportDownData={stats.ra.downData}
+                    />
+                    <KPICard
+                        title="Sched Disc"
+                        value={String(stats.disc.val)}
+                        total={String(stats.disc.total)}
+                        issueCount={0}
+                        icon={Calendar}
+                        exportData={stats.disc.data}
+                        exportUpData={stats.disc.upData}
+                    />
+                    <KPICard
+                        title="Sched Reports"
+                        value={String(stats.reports.val)}
+                        total={String(stats.reports.total)}
+                        issueCount={0}
+                        icon={FileSpreadsheet}
+                        exportData={stats.reports.data}
+                        exportUpData={stats.reports.upData}
                     />
                 </div>
             </div>

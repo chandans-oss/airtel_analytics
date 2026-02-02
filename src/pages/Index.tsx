@@ -5,6 +5,9 @@ import { RADashboard } from '@/components/dashboard/RADashboard';
 import { DiscoveryDashboard } from '@/components/dashboard/DiscoveryDashboard';
 import { PerformanceDashboard } from '@/components/dashboard/PerformanceDashboard';
 import { UnifiedMainDashboard } from '@/components/dashboard/UnifiedMainDashboard';
+import { BandwidthAnalytics } from '@/components/dashboard/BandwidthAnalytics';
+import { JitterAnalytics } from '@/components/dashboard/JitterAnalytics';
+import { QosAnalytics } from '@/components/dashboard/QosAnalytics';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessingOverlay } from '@/components/data/ProcessingOverlay';
 import { useInventoryStore } from '@/store/inventoryStore';
@@ -33,6 +36,18 @@ const Index = () => {
 
     if (selectedModule === 'performance') {
       return <PerformanceDashboard />;
+    }
+
+    if (selectedModule === 'bandwidth') {
+      return <BandwidthAnalytics />;
+    }
+
+    if (selectedModule === 'jitter') {
+      return <JitterAnalytics />;
+    }
+
+    if (selectedModule === 'qos') {
+      return <QosAnalytics />;
     }
 
     return (

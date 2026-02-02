@@ -498,15 +498,7 @@ export function UnifiedMainDashboard() {
                     ))}
                 </div>
 
-                <div className="rounded-3xl border border-border/50 bg-card/20 p-8 flex flex-col items-center justify-center text-center gap-4 border-dashed">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <Search size={24} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold">Deep Scan Required?</h3>
-                        <p className="max-w-md text-sm text-muted-foreground mt-2">Use the detailed dashboard modules for interactive root cause analysis and correlation mapping.</p>
-                    </div>
-                </div>
+
             </div>
         );
     }
@@ -553,8 +545,7 @@ export function UnifiedMainDashboard() {
                         issueCount={stats.bw.issues}
                         icon={BarChart3}
                         onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
+                            setSelectedModule('bandwidth');
                         }}
                         onIssuesClick={() => setView('issues')}
                         exportData={stats.bw.data}
@@ -568,8 +559,7 @@ export function UnifiedMainDashboard() {
                         issueCount={stats.jitter.issues}
                         icon={Activity}
                         onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
+                            setSelectedModule('jitter');
                         }}
                         onIssuesClick={() => setView('issues')}
                         exportData={stats.jitter.data}
@@ -605,6 +595,10 @@ export function UnifiedMainDashboard() {
                             total={String(stats.qos.total)}
                             issueCount={stats.qos.total - stats.qos.val}
                             icon={Signal}
+                            onClick={() => {
+                                setSelectedModule('qos');
+                            }}
+                            onIssuesClick={() => setView('issues')}
                             exportData={stats.qos.data}
                             exportUpData={stats.qos.upData}
                             exportDownData={stats.qos.downData}

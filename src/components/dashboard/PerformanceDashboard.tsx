@@ -235,7 +235,7 @@ export function PerformanceDashboard() {
                         </button>
                         <div className="h-6 w-1 bg-primary rounded-full shadow-[0_0_10px_rgba(0,165,142,0.6)]" />
                         <div>
-                            <h2 className="text-[15px] font-black uppercase tracking-[0.2em] text-foreground/90 leading-none">Airtel Capacity Intelligence</h2>
+                            <h2 className="text-[15px] font-black uppercase tracking-[0.2em] text-foreground/90 leading-none">Performance Intelligence</h2>
                             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-50 mt-1">Dynamic Traffic Simulation • Regional Load Correlation</p>
                         </div>
                     </div>

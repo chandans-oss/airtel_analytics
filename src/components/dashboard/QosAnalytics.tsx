@@ -22,34 +22,44 @@ import {
 } from 'recharts';
 import { exportToCSV } from '@/utils/exportUtils';
 
-// --- MOCK DATA ---
-const generateQosData = (count: number) => {
-    const regions = ['North', 'South', 'East', 'West'];
-    const issues = ['None', 'SNMP MIB Limit', 'Auth Failure', 'CLI Timeout', 'Policy Mismatch', 'Unsupported OID'];
-    const classes = ['Voice', 'Video', 'Signaling', 'BestEffort', 'MissionCritical'];
-
-    return Array.from({ length: count }).map((_, i) => {
-        const isPolled = Math.random() > 0.15;
-        const drops = isPolled ? (Math.random() > 0.7 ? Math.floor(Math.random() * 500) : 0) : 0;
-        const issue = isPolled ? (drops > 100 ? 'High Drop Rate' : 'None') : issues[Math.floor(Math.random() * (issues.length - 1)) + 1];
-
-        return {
-            id: `LNK-${3000 + i}`,
-            name: `Link-${3000 + i}`,
-            region: regions[Math.floor(Math.random() * regions.length)],
-            policyClass: classes[Math.floor(Math.random() * classes.length)],
-            drops,
-            status: isPolled ? 'Polled' : 'Not Polled',
-            issue
-        };
-    });
-};
-
-const QOS_DATA = generateQosData(150);
-
 export function QosAnalytics() {
-    const { setSelectedModule } = useInventoryStore();
+    const { setSelectedModule, links } = useInventoryStore();
     const [filter, setFilter] = useState('All');
+
+    // --- CONSISTENT DATA LOGIC (Matching Unified Dashboard) ---
+    const QOS_DATA = useMemo(() => {
+        // Use 65% subset as defined in Unified Dashboard for QoS enabled links
+        const qosSubset = links.filter((_, i) => (i % 100) < 65);
+        const regions = ['North', 'South', 'East', 'West'];
+        const issues = ['None', 'SNMP MIB Limit', 'Auth Failure', 'CLI Error', 'Policy Skip', 'Discovery Fail'];
+        const classes = ['Voice', 'Video', 'Signaling', 'BestEffort', 'MissionCritical'];
+
+        // Fallback to match image (Image 2 shows 74 total)
+        const baseData = qosSubset.length > 0 ? qosSubset : Array.from({ length: 74 }).map((_, i) => ({
+            id: `LNK-${3000 + i}`,
+            deviceName: `Distribution-Switch-${3000 + i}`,
+            region: regions[i % 4],
+            // "put some up also" - make ~92% polled
+            snmpStatus: (i % 12 === 0) ? 'DOWN' : 'UP',
+            linkStatus: 'UP'
+        }));
+
+        return baseData.map((d: any, i) => {
+            const isPolled = d.snmpStatus === 'UP';
+            const drops = isPolled ? (Math.random() > 0.85 ? Math.floor(Math.random() * 800) : 0) : 0;
+            const issue = isPolled ? (drops > 100 ? 'High Drop Rate' : 'None') : issues[Math.floor(Math.random() * (issues.length - 1)) + 1];
+
+            return {
+                id: d.id || `LNK-${3000 + i}`,
+                name: d.deviceName || d.name || `Interface-${3000 + i}`,
+                region: d.region || regions[i % 4],
+                policyClass: classes[i % classes.length],
+                drops,
+                status: isPolled ? 'Polled' : 'Not Polled',
+                issue
+            };
+        });
+    }, [links]);
 
     const stats = useMemo(() => {
         const total = QOS_DATA.length;
@@ -58,7 +68,7 @@ export function QosAnalytics() {
         const highDrops = QOS_DATA.filter(d => d.drops > 50).length;
 
         return { total, polled, notPolled, highDrops };
-    }, []);
+    }, [QOS_DATA]);
 
     const issueData = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -66,7 +76,7 @@ export function QosAnalytics() {
             counts[d.issue] = (counts[d.issue] || 0) + 1;
         });
         return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    }, []);
+    }, [QOS_DATA]);
 
     const dropDistribution = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -74,7 +84,7 @@ export function QosAnalytics() {
             counts[d.policyClass] = (counts[d.policyClass] || 0) + d.drops;
         });
         return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    }, []);
+    }, [QOS_DATA]);
 
     const filteredData = useMemo(() => {
         if (filter === 'All') return QOS_DATA;
@@ -82,7 +92,7 @@ export function QosAnalytics() {
         if (filter === 'Not Polled') return QOS_DATA.filter(d => d.status === 'Not Polled');
         if (filter === 'Packet Drops') return QOS_DATA.filter(d => d.drops > 0);
         return QOS_DATA;
-    }, [filter]);
+    }, [filter, QOS_DATA]);
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10 max-w-[1600px] mx-auto">

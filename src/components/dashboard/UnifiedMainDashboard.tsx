@@ -315,7 +315,11 @@ export function UnifiedMainDashboard() {
         // QoS: Links with QoS policies (simulate ~65% of links)
         const qosLinks = getSubset(reportLinks, 0.65);
         const qosTotal = Math.floor(qosLinks.length * netScale);
-        const qosIssues = Math.floor(qosLinks.filter(l => (l.performanceScore || 0) <= 90).length * netScale);
+        // Realistic QoS issues: Only 5-10% should have serious drops or config issues in a healthy NOC
+        const qosIssuesBase = qosLinks.filter(l => (l.performanceScore !== undefined && l.performanceScore <= 90)).length;
+        const qosIssues = qosIssuesBase > 0 ? Math.floor(qosIssuesBase * netScale) : Math.floor(qosTotal * 0.08);
+        const qosUp = qosTotal - qosIssues;
+
 
         // CPU/Memory: All Network Nodes (subset of total nodes, usually 70% are network devices vs app servers)
         const netDeviceSubset = getSubset(reportNodes, 0.7); // Pure network devices
@@ -368,7 +372,7 @@ export function UnifiedMainDashboard() {
             critical: { issues: Math.floor(baseEvents * 0.15) },
 
             // Network Specific (Use calculated distinct totals)
-            qos: { val: qosTotal - qosIssues, total: qosTotal, data: links, upData: [], downData: [] },
+            qos: { val: qosUp, total: qosTotal, data: links, upData: [], downData: [] },
             cpu: { val: netNodesCount - cpuIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
             memory: { val: netNodesCount - memIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
             uptime: { val: netNodesCount - uptimeIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
@@ -590,15 +594,18 @@ export function UnifiedMainDashboard() {
                     {/* Network Based Stats - Always Visible, Data Scaled to 0 if Off */}
                     <>
                         <KPICard
-                            title="QOS Score"
-                            value={String(stats.qos.val)}
-                            total={String(stats.qos.total)}
+                            title="QOS STATUS"
+                            total={stats.qos.total.toLocaleString()}
+                            value={stats.qos.val.toLocaleString()}
                             issueCount={stats.qos.total - stats.qos.val}
-                            icon={Signal}
+                            icon={ShieldCheck}
                             onClick={() => {
                                 setSelectedModule('qos');
                             }}
-                            onIssuesClick={() => setView('issues')}
+                            onIssuesClick={() => {
+                                setSelectedModule('qos');
+                                setView('issues');
+                            }}
                             exportData={stats.qos.data}
                             exportUpData={stats.qos.upData}
                             exportDownData={stats.qos.downData}

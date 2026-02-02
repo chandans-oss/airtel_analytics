@@ -9,7 +9,11 @@ import {
     CheckCircle2,
     XCircle,
     ListFilter,
-    ShieldAlert
+    ShieldAlert,
+    Info,
+    MousePointer2,
+    ArrowUpDown,
+    Network
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -21,11 +25,11 @@ import { exportToCSV } from '@/utils/exportUtils';
 // --- MOCK DATA ---
 const generateQosData = (count: number) => {
     const regions = ['North', 'South', 'East', 'West'];
-    const issues = ['None', 'SNMP MIB Limit', 'Auth Failure', 'CLI Timeout', 'Policy Mismatch'];
+    const issues = ['None', 'SNMP MIB Limit', 'Auth Failure', 'CLI Timeout', 'Policy Mismatch', 'Unsupported OID'];
     const classes = ['Voice', 'Video', 'Signaling', 'BestEffort', 'MissionCritical'];
 
     return Array.from({ length: count }).map((_, i) => {
-        const isPolled = Math.random() > 0.15; // 85% polled
+        const isPolled = Math.random() > 0.15;
         const drops = isPolled ? (Math.random() > 0.7 ? Math.floor(Math.random() * 500) : 0) : 0;
         const issue = isPolled ? (drops > 100 ? 'High Drop Rate' : 'None') : issues[Math.floor(Math.random() * (issues.length - 1)) + 1];
 
@@ -80,126 +84,184 @@ export function QosAnalytics() {
         return QOS_DATA;
     }, [filter]);
 
-    const handleIssueClick = (data: any) => {
-        exportToCSV(QOS_DATA.filter(d => d.issue === data.name), `QoS_Issue_${data.name}`);
-    };
-
-    const handleClassClick = (data: any) => {
-        // Export links that have drops in this class
-        exportToCSV(QOS_DATA.filter(d => d.policyClass === data.name && d.drops > 0), `QoS_Class_Drops_${data.name}`);
-    };
-
     return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10">
-            <div className="flex items-center justify-between px-1 mb-4">
+        <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10 max-w-[1600px] mx-auto">
+            {/* Header Section */}
+            <div className="flex flex-col gap-1 px-1">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => setSelectedModule('unified')} className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center">
+                    <button onClick={() => setSelectedModule('unified')} className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center border border-primary/20 bg-primary/5">
                         <ChevronLeft size={20} strokeWidth={2.5} />
                     </button>
-                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <div className="h-6 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <div>
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">QoS Analytics</h2>
-                        <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Policy Compliance & Drops</p>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">QoS Compliance & Drops Portal</h2>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Traffic Prioritization • Queue Diagnostics • Policy Enforcement</p>
+                    </div>
+                </div>
+
+                {/* Explainability Banner */}
+                <div className="mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3 shadow-inner">
+                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-600 mt-1"><Info size={18} /></div>
+                    <div>
+                        <h4 className="text-[11px] font-black uppercase text-amber-700 tracking-wider mb-1">Understanding Policy Discards</h4>
+                        <p className="text-[11px] leading-relaxed text-muted-foreground max-w-4xl">
+                            Quality of Service (QoS) ensures that Tier-1 traffic like <strong>Voice (EF)</strong> and <strong>Signaling (CS3)</strong> is prioritized during congestion.
+                            <strong>Drops</strong> occur when a queue buffer is full.
+                            If you see drops in <strong>Voice</strong> classes, user experience is actively degraded.
+                            <strong>Policy Mismatch</strong> suggests that the router config does not match the actual traffic classes detected.
+                        </p>
                     </div>
                 </div>
             </div>
 
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">Total Policies</p><p className="text-2xl font-black">{stats.total}</p></div>
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary"><Settings size={20} /></div>
+                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-5"><Settings size={40} /></div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total QoS Policies</p>
+                        <p className="text-3xl font-black">{stats.total}</p>
+                    </div>
+                    <div className="p-3 bg-primary/10 rounded-xl text-primary"><Settings size={24} /></div>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-emerald-500/50 transition-colors" onClick={() => setFilter('Polled')}>
-                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">Polled</p><p className="text-2xl font-black text-emerald-600">{stats.polled}</p></div>
-                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><CheckCircle2 size={20} /></div>
+
+                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Polled' && "ring-2 ring-emerald-500/50 border-emerald-500/30 shadow-lg")} onClick={() => setFilter('Polled')}>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1 italic">Policy Health</p>
+                        <p className="text-3xl font-black text-emerald-600">{stats.polled}</p>
+                        <div className="flex items-center gap-1 text-[9px] text-emerald-700 font-bold mt-1 uppercase tracking-tighter"><CheckCircle2 size={10} /> Sync Confirmed</div>
+                    </div>
+                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><ShieldAlert size={24} /></div>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-red-500/50 transition-colors" onClick={() => setFilter('Not Polled')}>
-                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">Not Polled</p><p className="text-2xl font-black text-destructive">{stats.notPolled}</p></div>
-                    <div className="p-2 bg-red-500/10 rounded-lg text-destructive"><XCircle size={20} /></div>
+
+                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Not Polled' && "ring-2 ring-red-500/50 border-red-500/30 shadow-lg")} onClick={() => setFilter('Not Polled')}>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1 italic">Silent Interfaces</p>
+                        <p className="text-3xl font-black text-destructive">{stats.notPolled}</p>
+                        <div className="flex items-center gap-1 text-[9px] text-destructive font-bold mt-1 uppercase tracking-tighter"><XCircle size={10} /> MIB/OID Unreachable</div>
+                    </div>
+                    <div className="p-3 bg-red-500/10 rounded-xl text-destructive group-hover:bg-red-500 group-hover:text-white transition-colors"><AlertTriangle size={24} /></div>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-amber-500/50 transition-colors" onClick={() => setFilter('Packet Drops')}>
-                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">Packet Drops</p><p className="text-2xl font-black text-amber-600">{stats.highDrops}</p></div>
-                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><ShieldAlert size={20} /></div>
+
+                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Packet Drops' && "ring-2 ring-amber-500/50 border-amber-500/30 shadow-lg")} onClick={() => setFilter('Packet Drops')}>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1 italic">Active Discards</p>
+                        <p className="text-3xl font-black text-amber-600">{stats.highDrops}</p>
+                        <div className="flex items-center gap-1 text-[9px] text-amber-700 font-bold mt-1 uppercase tracking-tighter"><ArrowUpDown size={10} /> Buffer Overflow Events</div>
+                    </div>
+                    <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors"><ShieldAlert size={24} /></div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2"><AlertTriangle size={14} className="text-destructive" /> Issue Breakdown</h3>
-                        <button onClick={() => exportToCSV(issueData, 'QoS_Issue_Counts')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <AlertTriangle size={16} className="text-destructive" />
+                            Policy & Config Diagnostics
+                        </h3>
+                        <button onClick={() => exportToCSV(issueData, 'Qos_Issues')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-all bg-muted/30 border border-border/50"><Download size={14} /></button>
                     </div>
-                    <div className="h-[250px]">
+                    <p className="text-[10px] text-muted-foreground mb-6 leading-relaxed bg-muted/20 p-2 rounded-lg border-l-2 border-destructive uppercase font-bold tracking-tight">
+                        Diagnostics of why QoS stats are unavailable. <strong>SNMP MIB Limit</strong> often occurs on high-density routers where the polling engine is throttled.
+                    </p>
+                    <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={issueData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                                 <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fontWeight: 700 }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar dataKey="value" barSize={18} radius={[0, 4, 4, 0]} fill="#ef4444" onClick={handleIssueClick} cursor="pointer">
-                                    <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fontWeight: 800 }} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--primary)/0.05)' }} contentStyle={{ borderRadius: '12px', fontSize: '12px', border: '1px solid hsl(var(--border))' }} />
+                                <Bar dataKey="value" barSize={22} radius={[0, 6, 6, 0]} fill="#ef4444" cursor="pointer" onClick={(data) => exportToCSV(QOS_DATA.filter(d => d.issue === data.name), `QoS_Issue_${data.name}`)}>
+                                    <LabelList dataKey="value" position="right" style={{ fontSize: '11px', fontWeight: 'black', fill: 'hsl(var(--destructive))' }} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2"><ListFilter size={14} className="text-amber-500" /> Total Drops by Class</h3>
-                        <button onClick={() => exportToCSV(dropDistribution, 'QoS_Class_Drops')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <ListFilter size={16} className="text-amber-500" />
+                            Total Drop Volume by Class
+                        </h3>
+                        <button onClick={() => exportToCSV(dropDistribution, 'Drops_by_Class')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-all bg-muted/30 border border-border/50"><Download size={14} /></button>
                     </div>
-                    <div className="h-[250px]">
+                    <p className="text-[10px] text-muted-foreground mb-6 leading-relaxed bg-muted/20 p-2 rounded-lg border-l-2 border-amber-500 uppercase font-bold tracking-tight">
+                        Aggregate packet discards per traffic class. Drops in <strong>MissionCritical</strong> or <strong>Voice</strong> classes require prioritized buffer restructuring.
+                    </p>
+                    <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dropDistribution}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.3)' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} onClick={handleClassClick} cursor="pointer" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.3)' }} contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))' }} />
+                                <Bar dataKey="value" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={45} cursor="pointer" onClick={(data) => exportToCSV(QOS_DATA.filter(d => d.policyClass === data.name), `QoS_Class_${data.name}`)}>
+                                    <LabelList dataKey="value" position="top" style={{ fontSize: '11px', fontWeight: 'black', fill: 'hsl(var(--amber-600))' }} />
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/20">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{filter} Policies</h3>
-                        <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">{filteredData.length} Records</span>
+            <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden border-t-4 border-t-amber-600">
+                <div className="p-5 border-b border-border/50 flex items-center justify-between bg-muted/10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-600 text-white rounded-lg shadow-lg shadow-amber-600/20"><Network size={16} /></div>
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Policy Compliance Drill-Down</h3>
+                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{filteredData.length} Policy Entries</span>
+                        </div>
                     </div>
-                    <button onClick={() => exportToCSV(filteredData, 'QoS_Detailed_Report')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase hover:bg-primary/90 transition-all">
-                        <Download size={12} /> Export CSV
+                    <button onClick={() => exportToCSV(filteredData, 'QoS_Detailed_Inventory')} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20">
+                        <Download size={16} /> Download Full Dataset
                     </button>
                 </div>
-                <div className="max-h-[400px] overflow-auto">
-                    <table className="w-full text-left">
-                        <thead className="text-[10px] uppercase text-muted-foreground bg-muted/50 sticky top-0 z-10">
+                <div className="max-h-[500px] overflow-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="text-[10px] uppercase font-black text-muted-foreground bg-muted/30 sticky top-0 z-10 backdrop-blur-md">
                             <tr>
-                                <th className="p-3">ID</th>
-                                <th className="p-3">Name</th>
-                                <th className="p-3">Region</th>
-                                <th className="p-3 text-center">Status</th>
-                                <th className="p-3 text-center">Class</th>
-                                <th className="p-3 text-center">Drops</th>
-                                <th className="p-3 text-right">Issue</th>
+                                <th className="p-4 border-b border-border/50">Interface ID</th>
+                                <th className="p-4 border-b border-border/50 text-center">Geography</th>
+                                <th className="p-4 border-b border-border/50 text-center">Class Mapping</th>
+                                <th className="p-4 border-b border-border/50 text-center">Discard Rate</th>
+                                <th className="p-4 border-b border-border/50 text-right">Operational Insight</th>
                             </tr>
                         </thead>
-                        <tbody className="text-[11px] font-medium divide-y divide-border/20">
+                        <tbody className="text-[12px] font-bold divide-y divide-border/20">
                             {filteredData.map((row, i) => (
-                                <tr key={i} className="hover:bg-muted/10">
-                                    <td className="p-3 font-mono text-primary">{row.id}</td>
-                                    <td className="p-3">{row.name}</td>
-                                    <td className="p-3">{row.region}</td>
-                                    <td className="p-3 text-center">
-                                        <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold", row.status === 'Polled' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>{row.status}</span>
+                                <tr key={i} className="hover:bg-amber-500/5 transition-colors group">
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-amber-600 group-hover:underline cursor-pointer">{row.name}</span>
+                                            <span className="text-[9px] text-muted-foreground font-mono italic">{row.id}</span>
+                                        </div>
                                     </td>
-                                    <td className="p-3 text-center">{row.policyClass}</td>
-                                    <td className="p-3 text-center font-mono font-bold">
-                                        {row.status === 'Polled' ? <span className={cn(row.drops > 0 ? "text-amber-600" : "text-emerald-600")}>{row.drops}</span> : <span className="text-muted-foreground">-</span>}
+                                    <td className="p-4 text-center"><span className="px-2 py-1 bg-muted rounded text-[10px] uppercase">{row.region}</span></td>
+                                    <td className="p-4 text-center">
+                                        <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-lg text-[10px] uppercase font-black">{row.policyClass}</span>
                                     </td>
-                                    <td className="p-3 text-right text-muted-foreground">{row.issue}</td>
+                                    <td className="p-4 text-center font-mono font-black italic">
+                                        {row.status === 'Polled' ? <span className={cn(row.drops > 100 ? "text-red-500 underline" : row.drops > 0 ? "text-amber-600" : "text-emerald-600")}>{row.drops} pkts</span> : <span className="text-muted-foreground opacity-30">NO DATA</span>}
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        {row.issue !== 'None' ? (
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-destructive font-black text-[10px] uppercase italic tracking-tighter">{row.issue}</span>
+                                                <span className="text-[8px] text-muted-foreground opacity-70">Action: Investigate Config Sync</span>
+                                            </div>
+                                        ) : row.drops > 0 ? (
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-amber-600 text-[10px] uppercase font-black">Tail Discards Active</span>
+                                                <span className="text-[8px] text-muted-foreground opacity-70">Tuning: Increase Queue Depth</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-emerald-600 text-[10px] opacity-40 uppercase tracking-widest font-black italic">In-Spec Compliance</span>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

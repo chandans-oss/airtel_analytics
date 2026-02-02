@@ -18,36 +18,38 @@ const Index = () => {
   useDataInitialization();
 
   const renderContent = () => {
-    if (selectedModule === 'unified') {
+    const module = selectedModule?.toLowerCase();
+
+    if (module === 'unified') {
       return <UnifiedMainDashboard />;
     }
 
-    if (['inventory', 'events', 'config', 'filteredEvents', 'filteredConfig'].includes(selectedModule)) {
-      return <InventoryDashboard />;
-    }
-
-    if (selectedModule === 'ra') {
-      return <RADashboard />;
-    }
-
-    if (selectedModule === 'discovery') {
-      return <DiscoveryDashboard />;
-    }
-
-    if (selectedModule === 'performance') {
-      return <PerformanceDashboard />;
-    }
-
-    if (selectedModule === 'bandwidth') {
+    if (module === 'bandwidth') {
       return <BandwidthAnalytics />;
     }
 
-    if (selectedModule === 'jitter') {
+    if (module === 'jitter') {
       return <JitterAnalytics />;
     }
 
-    if (selectedModule === 'qos') {
+    if (module === 'qos') {
       return <QosAnalytics />;
+    }
+
+    if (['inventory', 'events', 'config', 'filteredevents', 'filteredconfig'].includes(module)) {
+      return <InventoryDashboard />;
+    }
+
+    if (module === 'ra') {
+      return <RADashboard />;
+    }
+
+    if (module === 'discovery') {
+      return <DiscoveryDashboard />;
+    }
+
+    if (module === 'performance') {
+      return <PerformanceDashboard />;
     }
 
     return (

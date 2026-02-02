@@ -45,7 +45,8 @@ export function QosAnalytics() {
         }));
 
         return baseData.map((d: any, i) => {
-            const isPolled = d.snmpStatus === 'UP';
+            // "put some up also" - if data is entirely down, force some healthy state
+            const isPolled = d.snmpStatus === 'UP' || (i % 10 !== 0);
             const drops = isPolled ? (Math.random() > 0.85 ? Math.floor(Math.random() * 800) : 0) : 0;
             const issue = isPolled ? (drops > 100 ? 'High Drop Rate' : 'None') : issues[Math.floor(Math.random() * (issues.length - 1)) + 1];
 

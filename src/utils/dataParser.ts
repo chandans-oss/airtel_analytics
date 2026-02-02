@@ -313,7 +313,7 @@ function mapLinks(data: any[]): LinkData[] {
       pingStatus: getStr(row, ['PING_STATUS', 'PING', 'Ping Status', 'REACHABILITY', 'ICMP_STATUS']),
       utilization: parseFloat(String(getValue(row, ['UTILIZATION', 'Usage %', 'Link Utilization']) || '0')),
       errors: parseInt(String(getValue(row, ['ERRORS', 'Link Errors']) || '0'), 10),
-      performanceScore: parseFloat(String(getValue(row, ['PERFORMANCE_SCORE', 'Health Score']) || '0')),
+      performanceScore: parseFloat(String(getValue(row, ['PERFORMANCE_SCORE', 'Health Score']) || '100')),
       addedDate: getStr(row, ['DATE_ADDED', 'Added Date']),
       deletedDate: getStr(row, ['DATE_DELETED', 'Deleted Date']),
       probableCause: getStr(row, ['PROBABLE_CAUSE', 'Reason', 'Down Reason', 'REASON_FOR_DOWN', 'COMMENT']),

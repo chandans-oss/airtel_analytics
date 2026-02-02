@@ -11,8 +11,6 @@ import {
     XCircle,
     AlertTriangle,
     ChevronLeft,
-    Router,
-    Wifi,
     TrendingUp,
     TrendingDown,
     Clock,
@@ -25,7 +23,13 @@ import {
     Search,
     Filter,
     Layers,
-    Shuffle
+    Shuffle,
+    History,
+    ZapOff,
+    MonitorPlay,
+    Timer,
+    Info,
+    MousePointer2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -52,609 +56,569 @@ const generateMockLinks = (count: number) => {
 
         // Utilization Profile
         let utilBase = Math.random() * 100;
+        if (i < count * 0.15) utilBase = 85 + Math.random() * 14; // Critical/High
+        else if (i < count * 0.3) utilBase = 60 + Math.random() * 20; // Mid
+        else if (i > count * 0.85) utilBase = Math.random() * 10; // Low
 
-        // Enforce some realistic clusters
-        if (i < count * 0.1) utilBase = 90 + Math.random() * 8; // Critical
-        else if (i < count * 0.25) utilBase = 70 + Math.random() * 15; // High
-        else if (i > count * 0.8) utilBase = Math.random() * 8; // Underutilized
-
-        const currentUtil = Math.min(99, Math.max(1, utilBase));
+        const currentUtil = Math.min(99.9, Math.max(0.5, utilBase));
 
         // Trend Analysis
-        const trend = Math.random() > 0.6 ? (Math.random() > 0.5 ? 'Rising' : 'Declining') : 'Stable';
-        const momGrowth = trend === 'Rising' ? Math.floor(Math.random() * 15 + 2) :
-            trend === 'Declining' ? -Math.floor(Math.random() * 10) : Math.floor(Math.random() * 4 - 2);
+        const trend = Math.random() > 0.65 ? (Math.random() > 0.5 ? 'Rising' : 'Declining') : 'Stable';
+        const momGrowth = trend === 'Rising' ? Math.floor(Math.random() * 18 + 5) :
+            trend === 'Declining' ? -Math.floor(Math.random() * 12) : Math.floor(Math.random() * 6 - 3);
+
+        // Sustained utilization (Last 7/14/30 days)
+        const sustained70 = currentUtil > 70 && Math.random() > 0.3;
+        const chronicUnderUtil = currentUtil < 10 && Math.random() > 0.4;
+
+        // Peak vs Avg
+        const isBursty = Math.random() > 0.7;
+        const avgUtil = currentUtil;
+        const peakUtil = Math.min(100, isBursty ? (avgUtil * (1.5 + Math.random())) : (avgUtil * (1.1 + Math.random() * 0.2)));
+        const peakToAvgRatio = peakUtil / avgUtil;
 
         // Business vs Non-Business
-        const isBursty = Math.random() > 0.7;
-        const peakToAvg = isBursty ? (1.8 + Math.random()) : (1.1 + Math.random() * 0.3);
-        const businessUtil = Math.min(100, currentUtil * 1.1);
-        const nonBusinessUtil = currentUtil * 0.4; // Significantly lower typically
+        const businessUtil = Math.min(100, currentUtil * (1.1 + Math.random() * 0.2));
+        const nonBusinessUtil = currentUtil * (0.3 + Math.random() * 0.2);
 
-        // Forecasting
-        const daysTo80 = trend === 'Rising' && currentUtil < 80
-            ? Math.floor((80 - currentUtil) / (momGrowth / 30)) // Rough approx
-            : 0;
+        // Forecasting (Days to breach)
+        const daysTo70 = currentUtil < 70 && trend === 'Rising' ? Math.floor((70 - currentUtil) / (momGrowth / 30)) : 0;
+        const daysTo80 = currentUtil < 80 && trend === 'Rising' ? Math.floor((80 - currentUtil) / (momGrowth / 30)) : 0;
+        const daysTo90 = currentUtil < 90 && trend === 'Rising' ? Math.floor((90 - currentUtil) / (momGrowth / 30)) : 0;
 
-        // Stability
-        const variance = isBursty ? Math.random() * 20 : Math.random() * 5;
-        const stabilityScore = variance > 15 ? 'Low' : variance > 5 ? 'Medium' : 'High';
+        // Stability Score
+        const variance = isBursty ? 25 + Math.random() * 30 : 5 + Math.random() * 10;
+        const stabilityScoreValue = 100 - (variance / 0.6) - (trend === 'Rising' ? 10 : 0);
+        const stabilityStr = stabilityScoreValue > 80 ? 'High' : stabilityScoreValue > 50 ? 'Medium' : 'Low';
 
         // Errors & Performance
-        const packetLoss = currentUtil > 80 ? Math.random() * 5 : 0;
-        const latency = 20 + (currentUtil > 70 ? (currentUtil - 70) * 2 : 0) + Math.random() * 10;
+        const packetLoss = currentUtil > 85 ? (currentUtil - 80) * 0.8 + Math.random() : (currentUtil > 70 ? Math.random() * 0.5 : 0);
+        const latency = 15 + (currentUtil > 70 ? (currentUtil - 60) * 2.5 : 0) + (isBursty ? 20 : 0);
 
         // Redundancy
-        const backupUtil = Math.random() * 30; // Usually low
-        const failOverUtil = Math.min(100, currentUtil + backupUtil);
-        const failoverRisk = failOverUtil > 90 ? 'High' : 'Low';
+        const backupUtil = Math.random() * 40;
+        const projectedFailoverUtil = Math.min(120, currentUtil + backupUtil); // Can exceed 100% in simulation
+
+        // Composite Efficiency Score
+        const overprovisionPenalty = currentUtil < 5 ? 40 : (currentUtil < 15 ? 20 : 0);
+        const efficiencyScore = Math.floor((currentUtil * 0.6) + (stabilityScoreValue * 0.4) - overprovisionPenalty);
 
         return {
             id,
-            name: `${region}-Core-${i}`,
+            name: `${region}-Aggregation-${i}`,
             region,
             tier,
             service,
             customer,
             currentUtil: Number(currentUtil.toFixed(1)),
+            avgUtil: Number(avgUtil.toFixed(1)),
+            peakUtil: Number(peakUtil.toFixed(1)),
+            peakToAvgRatio: Number(peakToAvgRatio.toFixed(2)),
             trend,
             momGrowth,
-            peakToAvg: Number(peakToAvg.toFixed(2)),
+            sustained70,
+            chronicUnderUtil,
             businessUtil: Number(businessUtil.toFixed(1)),
             nonBusinessUtil: Number(nonBusinessUtil.toFixed(1)),
-            daysTo80: daysTo80 > 0 ? daysTo80 : 999, // 999 = safe or already breached
-            stabilityScore,
+            daysTo70: daysTo70 || (currentUtil >= 70 ? 1 : 999),
+            daysTo80: daysTo80 || (currentUtil >= 80 ? 1 : 999),
+            daysTo90: daysTo90 || (currentUtil >= 90 ? 1 : 999),
+            stabilityScore: stabilityStr,
+            stabilityValue: Math.max(0, Math.floor(stabilityScoreValue)),
             packetLoss: Number(packetLoss.toFixed(2)),
             latency: Math.floor(latency),
             backupUtil: Number(backupUtil.toFixed(1)),
-            failOverUtil: Number(failOverUtil.toFixed(1)),
-            failoverRisk,
-            efficiencyScore: Math.floor((currentUtil * (stabilityScore === 'High' ? 1.2 : 0.9)) - (currentUtil < 10 ? 20 : 0))
+            failoverLoad: Number(projectedFailoverUtil.toFixed(1)),
+            efficiencyScore: Math.min(100, Math.max(0, efficiencyScore))
         };
     });
 };
 
-const LINKS_DATA = generateMockLinks(100);
-
-// --- COMPONENT ---
+const LINKS_DATA = generateMockLinks(150);
 
 export function PerformanceDashboard() {
     const { setSelectedModule } = useInventoryStore();
     const [selectedView, setSelectedView] = useState<'OVERVIEW' | 'PLANNING' | 'OPTIMIZATION'>('OVERVIEW');
+    const [filter, setFilter] = useState('All');
 
     // --- DERIVED ANALYTICS ---
 
-    // 1. High Utilized Links
-    const criticalLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil > 90), []);
-    const highLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil >= 70 && l.currentUtil <= 90), []);
+    // 1. Utilization Buckets
+    const buckets = useMemo(() => ({
+        critical: LINKS_DATA.filter(l => l.currentUtil >= 90),
+        high: LINKS_DATA.filter(l => l.currentUtil >= 70 && l.currentUtil < 90),
+        medium: LINKS_DATA.filter(l => l.currentUtil >= 50 && l.currentUtil < 70),
+        low5: LINKS_DATA.filter(l => l.currentUtil < 5),
+        low10: LINKS_DATA.filter(l => l.currentUtil >= 5 && l.currentUtil < 10),
+    }), []);
 
-    // 2. Low Utilized Links
-    const zombieLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil < 5), []);
+    // 2. Planning Metrics
+    const planningStats = useMemo(() => ({
+        sustained70: LINKS_DATA.filter(l => l.sustained70).length,
+        growth10: LINKS_DATA.filter(l => l.momGrowth > 10).length,
+        breach15Days: LINKS_DATA.filter(l => l.daysTo80 > 1 && l.daysTo80 <= 15).length,
+        redundancyAtRisk: LINKS_DATA.filter(l => l.failoverLoad > 95).length
+    }), []);
 
-    // 3. Trends
-    const risingLinks = useMemo(() => LINKS_DATA.filter(l => l.trend === 'Rising' && l.currentUtil > 50), []);
+    // 3. Optimization Metrics
+    const optimizationStats = useMemo(() => ({
+        zombieLinks: buckets.low5.length,
+        chronicUnderUtil: buckets.low10.length,
+        overprovisioned: LINKS_DATA.filter(l => l.efficiencyScore < 30).length
+    }), []);
 
-    // 4. Forecast Data (Top 5 Riskiest)
-    const forecastRiskData = useMemo(() => {
-        return risingLinks
-            .filter(l => l.daysTo80 < 60) // Only imminent risks
+    // 4. Forecast Summary
+    const forecastGraphData = useMemo(() => {
+        return LINKS_DATA
+            .filter(l => l.daysTo80 < 90 && l.daysTo80 > 1)
             .sort((a, b) => a.daysTo80 - b.daysTo80)
-            .slice(0, 5)
+            .slice(0, 10)
             .map(l => ({
                 name: l.name,
                 current: l.currentUtil,
-                days: Math.floor(l.daysTo80),
+                days: l.daysTo80,
                 growth: l.momGrowth,
                 fullData: l
             }));
-    }, [risingLinks]);
+    }, []);
 
-    // 5. Business Hours vs Non-Business (Aggregate)
-    const timeOfDayComparison = useMemo(() => {
-        const avgBiz = LINKS_DATA.reduce((acc, curr) => acc + curr.businessUtil, 0) / LINKS_DATA.length;
-        const avgNonBiz = LINKS_DATA.reduce((acc, curr) => acc + curr.nonBusinessUtil, 0) / LINKS_DATA.length;
+    // 5. Pattern Matrix (Biz vs Non-Biz)
+    const bizComparison = useMemo(() => {
+        const avgBiz = Math.round(LINKS_DATA.reduce((acc, l) => acc + l.businessUtil, 0) / LINKS_DATA.length);
+        const avgNonBiz = Math.round(LINKS_DATA.reduce((acc, l) => acc + l.nonBusinessUtil, 0) / LINKS_DATA.length);
         return [
-            { name: 'Business Hours', value: Math.floor(avgBiz), fill: '#3b82f6' },
-            { name: 'Non-Business Hours', value: Math.floor(avgNonBiz), fill: '#94a3b8' }
+            { name: 'Business Hours (09-18)', value: avgBiz, fill: '#3b82f6' },
+            { name: 'Off-Hours', value: avgNonBiz, fill: '#94a3b8' }
         ];
     }, []);
 
-    // 6. Efficiency Scores (Top 7)
-    const topEfficientLinks = useMemo(() => {
-        return [...LINKS_DATA].sort((a, b) => b.efficiencyScore - a.efficiencyScore).slice(0, 7);
-    }, []);
+    const filteredLinks = useMemo(() => {
+        if (filter === 'All') return LINKS_DATA;
+        if (filter === 'Critical') return buckets.critical;
+        if (filter === 'High') return buckets.high;
+        if (filter === 'Medium') return buckets.medium;
+        if (filter === 'Zombie') return buckets.low5;
+        if (filter === 'Underutilized') return buckets.low10;
+        return LINKS_DATA;
+    }, [filter, buckets]);
 
-    // 7. Heatmap Data (Mock Region vs Hour simulation)
-    const heatmapData = useMemo(() => {
-        const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
-        return ['North', 'South', 'East', 'West'].flatMap(region =>
-            hours.map(hour => ({
-                region,
-                hour,
-                value: Math.floor(Math.random() * 60 + (hour === '12:00' || hour === '16:00' ? 30 : 0))
-            }))
-        );
-    }, []);
-
-    // 8. Customer Impact (New)
-    const customerImpactDates = useMemo(() => {
-        const impact = {} as Record<string, number>;
-        LINKS_DATA.forEach(l => {
-            if (!impact[l.customer]) impact[l.customer] = 0;
-            impact[l.customer] += l.currentUtil;
-        });
-        return Object.entries(impact)
-            .map(([name, totalUtil]) => ({ name, value: Math.round(totalUtil / 10), fill: '#8b5cf6' })) // Avg-ish
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-    }, []);
-
-    // 9. Redundancy Risk (New)
-    const redundancyRiskData = useMemo(() => {
-        const highRisk = LINKS_DATA.filter(l => l.failoverRisk === 'High');
-        return highRisk.sort((a, b) => b.failOverUtil - a.failOverUtil).slice(0, 5).map(l => ({
-            name: l.name,
-            primary: l.currentUtil,
-            backup: l.backupUtil,
-            projected: l.failOverUtil,
-            fullData: l
-        }));
-    }, []);
-
-    // --- HANDLERS ---
-    const handleBarClick = (data: any, prefix: string) => {
-        if (data && data.payload && data.payload.fullData) {
-            exportToCSV([data.payload.fullData], `${prefix}_${data.payload.name}_Details`);
-        } else if (data && data.payload) {
-            // Fallback for aggregate charts
-            exportToCSV([data.payload], `${prefix}_${data.payload.name || 'Data'}`);
-        }
+    const getRecommendation = (link: any) => {
+        if (link.currentUtil >= 90 || (link.currentUtil > 75 && link.trend === 'Rising')) return { label: '🔴 UPGRADE REQUIRED', color: 'text-red-600 bg-red-100 border-red-200' };
+        if (link.currentUtil >= 70) return { label: '🟠 MONITOR CLOSELY', color: 'text-amber-600 bg-amber-100 border-amber-200' };
+        if (link.currentUtil < 10) return { label: '🟢 CANDIDATE FOR DOWNGRADE', color: 'text-emerald-600 bg-emerald-100 border-emerald-200' };
+        if (link.peakToAvgRatio > 2.0) return { label: '🟡 OPTIMIZE TRAFFIC (BURSTY)', color: 'text-blue-600 bg-blue-100 border-blue-200' };
+        return { label: '⚪ SYSTEM NOMINAL', color: 'text-muted-foreground bg-muted border-border' };
     };
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10">
-            {/* Header */}
-            <div className="flex items-center justify-between px-1 mb-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setSelectedModule('unified')}
-                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
-                        title="Back to Overview"
-                    >
-                        <ChevronLeft size={20} strokeWidth={2.5} />
-                    </button>
-                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
-                    <div>
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
-                            Performance & Capacity Intelligence
-                        </h2>
-                        <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
-                            Predictive Utilization • Efficiency Scoring • Cost Optimization
-                        </p>
-                    </div>
-                </div>
-                <div className="flex bg-muted/50 p-1 rounded-lg">
-                    {['OVERVIEW', 'PLANNING', 'OPTIMIZATION'].map(view => (
-                        <button
-                            key={view}
-                            onClick={() => setSelectedView(view as any)}
-                            className={cn(
-                                "px-3 py-1 text-[10px] font-bold uppercase transition-all rounded-md",
-                                selectedView === view ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            {view}
+        <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10 max-w-[1600px] mx-auto">
+            {/* Header Section */}
+            <div className="flex flex-col gap-1 px-1">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSelectedModule('unified')} className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center border border-primary/20 bg-primary/5">
+                            <ChevronLeft size={20} strokeWidth={2.5} />
                         </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* ---------------- SECTION 1: CRITICAL UTILIZATION METRICS ---------------- */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Critical > 90% */}
-                <div className="rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <AlertTriangle size={64} className="text-destructive" />
-                    </div>
-                    <div className="flex justify-between items-start z-10">
+                        <div className="h-6 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Critical Saturation</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-foreground">{criticalLinks.length}</h3>
-                                <span className="text-[10px] font-bold text-destructive flex items-center gap-1">
-                                    <TrendingUp size={10} /> &gt;90% Util
-                                </span>
-                            </div>
+                            <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">Performance & Capacity Intelligence</h2>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Predictive Modeling • Traffic Stability • Asset Efficiency</p>
                         </div>
-                        <button onClick={() => exportToCSV(criticalLinks, 'Critical_Links_Report')} className="p-1.5 rounded-md hover:bg-destructive hover:text-white text-muted-foreground transition-all">
-                            <Download size={14} />
-                        </button>
                     </div>
-                    <div className="mt-3">
-                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-destructive/20">
-                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
-                            <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
-                                🔴 Upgrade Required
-                            </span>
-                        </div>
+                    <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50">
+                        {['OVERVIEW', 'PLANNING', 'OPTIMIZATION'].map(view => (
+                            <button
+                                key={view}
+                                onClick={() => setSelectedView(view as any)}
+                                className={cn(
+                                    "px-4 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg",
+                                    selectedView === view ? "bg-card shadow-sm text-primary border border-border/50" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {view}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* High 70-90% */}
-                <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Activity size={64} className="text-amber-500" />
-                    </div>
-                    <div className="flex justify-between items-start z-10">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">High Load Warning</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-foreground">{highLinks.length}</h3>
-                                <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
-                                    <TrendingUp size={10} /> 70-90% Util
-                                </span>
-                            </div>
+                <div className="mt-4 p-4 rounded-2xl border border-primary/20 bg-primary/5 flex items-start gap-4 shadow-inner">
+                    <div className="p-3 bg-primary/10 rounded-xl text-primary animate-pulse"><Info size={20} /></div>
+                    <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-[11px] font-black uppercase text-primary tracking-widest">NOC Executive Summary</h4>
+                            <span className="text-[10px] font-bold text-muted-foreground bg-background/50 px-2 py-0.5 rounded-full border border-border/50">Last Update: Real-time</span>
                         </div>
-                        <button onClick={() => exportToCSV(highLinks, 'High_Util_Links_Report')} className="p-1.5 rounded-md hover:bg-amber-500 hover:text-white text-muted-foreground transition-all">
-                            <Download size={14} />
-                        </button>
-                    </div>
-                    <div className="mt-3">
-                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-amber-500/20">
-                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
-                            <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                🟠 Monitor Closely
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Underutilized < 5% */}
-                <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ArrowDownRight size={64} className="text-blue-500" />
-                    </div>
-                    <div className="flex justify-between items-start z-10">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Zombie Links</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-foreground">{zombieLinks.length}</h3>
-                                <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1">
-                                    <TrendingDown size={10} /> &lt;5% Util
-                                </span>
-                            </div>
-                        </div>
-                        <button onClick={() => exportToCSV(zombieLinks, 'Zombie_Links_Report')} className="p-1.5 rounded-md hover:bg-blue-500 hover:text-white text-muted-foreground transition-all">
-                            <Download size={14} />
-                        </button>
-                    </div>
-                    <div className="mt-3">
-                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-blue-500/20">
-                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-                                🟢 Downgrade Candidate
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Avg Efficiency Score */}
-                <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Gauge size={64} className="text-emerald-500" />
-                    </div>
-                    <div className="flex justify-between items-start z-10">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Fleet Efficiency</p>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-foreground">
-                                    {Math.round(LINKS_DATA.reduce((acc, l) => acc + l.efficiencyScore, 0) / LINKS_DATA.length)}
-                                </h3>
-                                <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                                    score / 100
-                                </span>
-                            </div>
-                        </div>
-                        <button onClick={() => exportToCSV(LINKS_DATA, 'Full_Network_Efficiency_Report')} className="p-1.5 rounded-md hover:bg-emerald-500 hover:text-white text-muted-foreground transition-all">
-                            <Download size={14} />
-                        </button>
-                    </div>
-                    <div className="mt-3">
-                        <p className="text-[9px] text-muted-foreground leading-tight">
-                            Composite score of Utilization × Stability × Business Value.
+                        <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            Analyzed 150 backbone segments. Found <span className="text-red-600 font-black">{buckets.critical.length} assets in critical saturation</span> and <span className="text-amber-600 font-black">{planningStats.growth10} segments with &gt;10% MoM growth</span>.
+                            Forecasting identifies <span className="text-destructive font-black underline decoration-2">{planningStats.breach15Days} imminent 15-day breaches</span>. Optimization identifies <span className="text-emerald-600 font-black">{optimizationStats.zombieLinks} major downgrade candidates</span> to reduce operational cost by ~12%.
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* ---------------- SECTION 2: FORECASTING & TRENDS (PLANNING VIEW) ---------------- */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* 1. Time-to-Threshold (Capacity Risk) */}
-                <div className="col-span-1 lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                <Clock size={14} className="text-destructive" />
-                                Forecasted Capacity Breaches (Next 60 Days)
-                            </h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                                Predictions based on 30-day linear regression trend analysis.
-                            </p>
-                        </div>
-                        <button onClick={() => exportToCSV(forecastRiskData, 'Capacity_Risk_Forecast')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+            {/* --- SECTION 1: DUAL CHANNEL UTILIZATION BUCKETS --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* HIGH UTIL CHANNEL */}
+                <div className={cn("col-span-1 rounded-2xl border border-destructive/30 bg-gradient-to-br from-destructive/5 to-transparent p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02]", filter === 'Critical' && "ring-2 ring-red-500 shadow-lg")} onClick={() => setFilter('Critical')}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-destructive uppercase tracking-tighter italic">Critical Saturation</p>
+                        <AlertTriangle size={14} className="text-destructive" />
                     </div>
-                    <div className="h-[250px] w-full">
+                    <div className="flex items-baseline gap-2">
+                        <h3 className="text-3xl font-black text-foreground">{buckets.critical.length}</h3>
+                        <span className="text-[10px] font-bold text-destructive">&gt;90% LOAD</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">Action: Immediate Upgrade</p>
+                </div>
+
+                <div className={cn("col-span-1 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02]", filter === 'High' && "ring-2 ring-amber-500 shadow-lg")} onClick={() => setFilter('High')}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-tighter italic">High Warning</p>
+                        <TrendingUp size={14} className="text-amber-500" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h3 className="text-3xl font-black text-foreground">{buckets.high.length}</h3>
+                        <span className="text-[10px] font-bold text-amber-600">70-90% LOAD</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">Action: Traffic Balancing</p>
+                </div>
+
+                <div className={cn("col-span-1 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02]", filter === 'Medium' && "ring-2 ring-primary shadow-lg")} onClick={() => setFilter('Medium')}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-tighter italic">Growth Zone</p>
+                        <Activity size={14} className="text-primary" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h3 className="text-3xl font-black text-foreground">{buckets.medium.length}</h3>
+                        <span className="text-[10px] font-bold text-primary">50-70% LOAD</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">Action: Baseline Shift</p>
+                </div>
+
+                {/* LOW UTIL CHANNEL */}
+                <div className={cn("col-span-1 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02]", filter === 'Zombie' && "ring-2 ring-blue-500 shadow-lg")} onClick={() => setFilter('Zombie')}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter italic">Zombie Assets</p>
+                        <ZapOff size={14} className="text-blue-500" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h3 className="text-3xl font-black text-foreground">{buckets.low5.length}</h3>
+                        <span className="text-[10px] font-bold text-blue-600">&lt;5% LOAD</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">Action: Release Capacity</p>
+                </div>
+
+                <div className={cn("col-span-1 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02]", filter === 'Underutilized' && "ring-2 ring-emerald-500 shadow-lg")} onClick={() => setFilter('Underutilized')}>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter italic">Operational Slop</p>
+                        <ArrowDownRight size={14} className="text-emerald-500" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h3 className="text-3xl font-black text-foreground">{buckets.low10.length}</h3>
+                        <span className="text-[10px] font-bold text-emerald-600">5-10% LOAD</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">Action: Downgrade Review</p>
+                </div>
+            </div>
+
+            {/* --- SECTION 2: FORECASTING & CAPACITY RISK (PLANNING) --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Capacity Breach Forecast */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Timer size={16} className="text-destructive animate-pulse" />
+                            Time-to-Breach Indicators (80% Forecast)
+                        </h3>
+                        <button onClick={() => exportToCSV(forecastGraphData, 'Capacity_Breach_Forecast')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50 transition-all"><Download size={14} /></button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-6 leading-relaxed bg-muted/20 p-2 rounded-lg border-l-2 border-destructive">
+                        Linear regression applied to 30-day historical data. Links with <span className="font-black text-red-600">&lt;15 days</span> are in critical execution window for hardware upgrade.
+                    </p>
+                    <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={forecastRiskData} layout="vertical" margin={{ left: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
-                                <XAxis type="number" domain={[0, 60]} tick={{ fontSize: 10 }} label={{ value: 'Days to Breach (80%)', position: 'insideBottom', offset: -5, fontSize: 10 }} />
-                                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 700 }} />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                                    formatter={(value: any, name: any, props: any) => {
-                                        if (name === 'days') return [`${value} Days`, 'Time to Breach'];
-                                        return [value, name];
-                                    }}
-                                />
-                                <Bar
-                                    dataKey="days"
-                                    barSize={20}
-                                    radius={[0, 4, 4, 0]}
-                                    onClick={(data) => handleBarClick(data, 'Forecast')}
-                                    cursor="pointer"
-                                >
-                                    {forecastRiskData.map((entry, index) => (
+                            <BarChart data={forecastGraphData} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                <XAxis type="number" domain={[0, 90]} tick={{ fontSize: 10, fontWeight: 700 }} label={{ value: 'Days Remaining', position: 'insideBottom', offset: -5, fontSize: 10 }} />
+                                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fontWeight: 800, fill: 'hsl(var(--foreground))' }} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--primary)/0.05)' }} contentStyle={{ borderRadius: '12px', fontSize: '11px', border: '1px solid hsl(var(--border))' }} />
+                                <Bar dataKey="days" radius={[0, 6, 6, 0]} barSize={22} cursor="pointer">
+                                    {forecastGraphData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.days < 15 ? '#ef4444' : entry.days < 45 ? '#f59e0b' : '#3b82f6'} />
                                     ))}
-                                    <LabelList dataKey="days" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                    <LabelList dataKey="days" position="right" style={{ fontSize: '11px', fontWeight: 'black' }} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    <div className="mt-4 flex gap-4 text-[9px] font-black uppercase text-muted-foreground">
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Critical (&lt;15d)</span>
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Warning (15-45d)</span>
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Safe (&gt;45d)</span>
+                    </div>
                 </div>
 
-                {/* 2. Business vs Non-Business Pattern */}
-                <div className="col-span-1 rounded-xl border border-border bg-card p-5 shadow-sm">
+                {/* Pattern View: Biz vs Off-Hours + Analysis Heatmap */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Clock size={14} className="text-blue-500" />
-                            Biz vs Non-Biz Utilization
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <History size={16} className="text-blue-500" />
+                            Temporal Load Distribution
                         </h3>
-                        <button onClick={() => exportToCSV(LINKS_DATA, 'Business_Vs_NonBusiness_Stats')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                        <div className="flex items-center gap-2">
+                            <div className="flex gap-1 items-center px-2 py-1 bg-muted rounded-lg text-[10px] font-bold text-muted-foreground">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div> Biz
+                                <div className="w-2 h-2 rounded-full bg-slate-400"></div> Off
+                            </div>
+                            <button onClick={() => exportToCSV(LINKS_DATA, 'Load_Distribution_Data')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50"><Download size={14} /></button>
+                        </div>
                     </div>
-                    <div className="h-[200px] w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={timeOfDayComparison}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    onClick={(data) => exportToCSV(LINKS_DATA, `Export_${data.name}`)}
-                                    cursor="pointer"
-                                >
-                                    {timeOfDayComparison.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-[10px] text-muted-foreground font-medium uppercase">Avg Util</span>
+
+                    <div className="grid grid-cols-2 gap-4 flex-1">
+                        <div className="h-full flex flex-col justify-center items-center gap-4">
+                            <ResponsiveContainer width="100%" height={180}>
+                                <PieChart>
+                                    <Pie data={bizComparison} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                        {bizComparison.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ borderRadius: '12px' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="text-center">
+                                <p className="text-2xl font-black text-primary">{bizComparison[0].value}%</p>
+                                <p className="text-[10px] font-black text-muted-foreground uppercase opacity-70 italic">Peak Biz Capacity</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <TrendingUp size={14} className="text-purple-600" />
+                                    <span className="text-[10px] font-black uppercase">Peak-to-Avg Ratio</span>
+                                </div>
+                                <p className="text-3xl font-black text-foreground">
+                                    {(LINKS_DATA.reduce((acc, l) => acc + l.peakToAvgRatio, 0) / LINKS_DATA.length).toFixed(2)}
+                                </p>
+                                <p className="text-[9px] text-muted-foreground mt-1">High ratio indicates <span className="text-amber-600 font-bold uppercase tracking-tight">Bursty Traffic Profile</span> requiring higher buffer depth.</p>
+                            </div>
+                            <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <ShieldAlert size={14} className="text-primary" />
+                                    <span className="text-[10px] font-black uppercase">Failover Risk Exposure</span>
+                                </div>
+                                <p className="text-3xl font-black text-primary">{planningStats.redundancyAtRisk}</p>
+                                <p className="text-[9px] text-muted-foreground mt-1">Links that will exceed <span className="text-red-600 font-bold uppercase">95% Load</span> if secondary fails.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-
             </div>
 
-            {/* ---------------- SECTION 3: NEW METRICS - CUSTOMER & REDUNDANCY ---------------- */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                {/* Customer / Service Impact */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                <Layers size={14} className="text-purple-500" />
-                                Top Customer Bandwidth Consumers
-                            </h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">Aggregated utilization by primary customer account.</p>
-                        </div>
-                        <button onClick={() => exportToCSV(customerImpactDates, 'Customer_Bandwidth_Impact')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
-                    </div>
-                    <div className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={customerImpactDates} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 700 }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar
-                                    dataKey="value"
-                                    barSize={20}
-                                    radius={[0, 4, 4, 0]}
-                                    fill="#8b5cf6"
-                                    onClick={(data) => exportToCSV(LINKS_DATA.filter(l => l.customer === data.name), `Detailed_${data.name}_Links`)}
-                                    cursor="pointer"
-                                >
-                                    <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Redundancy & Failover Risk */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                <Shuffle size={14} className="text-destructive" />
-                                Redundancy Failover Simulation
-                            </h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">Projected utilization if primary link fails (Top Risks).</p>
-                        </div>
-                        <button onClick={() => exportToCSV(redundancyRiskData, 'Failover_Risk_Report')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
-                    </div>
-                    <div className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={redundancyRiskData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" height={40} />
-                                <YAxis tick={{ fontSize: 10 }} />
-                                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.3)' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar
-                                    dataKey="projected"
-                                    name="Projected Load"
-                                    fill="#ef4444"
-                                    barSize={30}
-                                    radius={[4, 4, 0, 0]}
-                                    onClick={(data) => handleBarClick(data, 'FailoverRisk')}
-                                    cursor="pointer"
-                                />
-                                <ReferenceLine y={100} stroke="red" strokeDasharray="3 3" label={{ value: 'Capacity Limit', position: 'top', fontSize: 9, fill: 'red' }} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-            </div>
-
-            {/* ---------------- SECTION 4: PERFORMANCE CORRELATION & INSIGHTS ---------------- */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                {/* 1. Error vs Utilization Scatter */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <ShieldAlert size={14} className="text-destructive" />
-                            Performance Impact Correlation
+            {/* --- SECTION 3: PERFORMANCE CORRELATION (SCATTER) & CUSTOMER METRICS --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Layers size={16} className="text-indigo-500" />
+                            Utilization vs Performance Impact Correlation
                         </h3>
-                        <button onClick={() => exportToCSV(LINKS_DATA, 'Performance_Correlation_Data')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                        <button onClick={() => exportToCSV(LINKS_DATA, 'Correlation_Dataset')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50"><Download size={14} /></button>
                     </div>
-                    <div className="h-[250px]">
+                    <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                                <XAxis type="number" dataKey="currentUtil" name="Utilization" unit="%" tick={{ fontSize: 10 }} label={{ value: 'Utilization %', position: 'insideBottom', offset: -10, fontSize: 10 }} />
-                                <YAxis type="number" dataKey="latency" name="Latency" unit="ms" tick={{ fontSize: 10 }} label={{ value: 'Latency (ms)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-                                <ZAxis type="number" dataKey="packetLoss" range={[20, 300]} name="Packet Loss" unit="%" />
-                                <Tooltip
-                                    cursor={{ strokeDasharray: '3 3' }}
-                                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                                />
-                                <Scatter
-                                    name="Links"
-                                    data={LINKS_DATA.filter(d => d.currentUtil > 50)}
-                                    fill="#8884d8"
-                                    onClick={(data) => exportToCSV([data.payload], `Scatter_Link_${data.payload.id}`)}
-                                >
-                                    {LINKS_DATA.filter(d => d.currentUtil > 50).map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={Number(entry.packetLoss) > 2 ? '#ef4444' : Number(entry.packetLoss) > 0.5 ? '#f59e0b' : '#3b82f6'} cursor="pointer" />
+                            <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis type="number" dataKey="currentUtil" name="Utilization" unit="%" tick={{ fontSize: 10, fontWeight: 700 }} label={{ value: 'Utilization %', position: 'insideBottom', offset: -10, fontSize: 10, fontWeight: 800 }} />
+                                <YAxis type="number" dataKey="latency" name="Latency" unit="ms" tick={{ fontSize: 10, fontWeight: 700 }} label={{ value: 'Latency (ms)', angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 800 }} />
+                                <ZAxis type="number" dataKey="packetLoss" range={[40, 400]} name="Packet Loss" unit="%" />
+                                <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                <Scatter name="Network Segments" data={LINKS_DATA} fill="#6366f1">
+                                    {LINKS_DATA.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.currentUtil > 80 ? '#ef4444' : entry.currentUtil > 60 ? '#f59e0b' : '#3b82f6'} fillOpacity={0.6} stroke={entry.currentUtil > 80 ? '#b91c1c' : '#1e3a8a'} strokeWidth={1} />
                                     ))}
                                 </Scatter>
-                                <ReferenceLine x={80} stroke="red" strokeDasharray="3 3" label={{ value: 'Throttling Threshold', position: 'insideTopLeft', fontSize: 10, fill: 'red' }} />
+                                <ReferenceLine x={80} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Performance Degrade Threshold', position: 'top', fill: '#ef4444', fontSize: 9, fontWeight: 900 }} />
                             </ScatterChart>
                         </ResponsiveContainer>
                     </div>
-                    <p className="text-[9px] text-center text-muted-foreground mt-2">
-                        Bubble size represents <span className="font-bold">Packet Loss %</span>. High latency typically appearing &gt;80% Load.
+                    <p className="text-[10px] text-center text-muted-foreground mt-4 italic font-bold">
+                        Bubble Size = Packet Loss %. Visualization proves that saturation beyond <span className="text-red-600">80% Utilization</span> causes exponential latency growth.
                     </p>
                 </div>
 
-                {/* 2. Top Efficiency Scores */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Gauge size={14} className="text-emerald-500" />
-                            Top Performing Links (Efficiency Score)
+                {/* Efficiency Leaderboard */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Gauge size={16} className="text-emerald-500" />
+                            Composite Capacity Efficiency
                         </h3>
-                        <button onClick={() => exportToCSV(topEfficientLinks, 'Efficiency_Leaderboard')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                        <button onClick={() => exportToCSV(LINKS_DATA, 'Efficiency_Full')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50"><Download size={14} /></button>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-[9px] uppercase text-muted-foreground bg-muted/30">
-                                <tr>
-                                    <th className="p-2 pl-3">Link Name</th>
-                                    <th className="p-2">Region</th>
-                                    <th className="p-2 text-center">Stability</th>
-                                    <th className="p-2 text-right pr-3">Score</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[11px] font-medium divide-y divide-border/20">
-                                {topEfficientLinks.map((link, i) => (
-                                    <tr key={i} className="hover:bg-muted/10 group cursor-pointer" onClick={() => exportToCSV([link], `Link_${link.id}_Efficiency`)}>
-                                        <td className="p-2 pl-3 text-primary group-hover:underline">{link.name}</td>
-                                        <td className="p-2">{link.region}</td>
-                                        <td className="p-2 text-center">
-                                            <span className={cn(
-                                                "px-1.5 py-0.5 rounded text-[9px] uppercase font-bold",
-                                                link.stabilityScore === 'High' ? "bg-emerald-100 text-emerald-700" :
-                                                    link.stabilityScore === 'Medium' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                            )}>
-                                                {link.stabilityScore}
-                                            </span>
-                                        </td>
-                                        <td className="p-2 text-right pr-3 font-mono font-bold">{link.efficiencyScore}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="flex-1 overflow-auto">
+                        <div className="space-y-3">
+                            {LINKS_DATA.sort((a, b) => b.efficiencyScore - a.efficiencyScore).slice(0, 7).map((link, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/40 hover:border-emerald-500/30 transition-all group">
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] font-black text-foreground group-hover:text-primary transition-colors">{link.name}</span>
+                                        <span className="text-[9px] text-muted-foreground font-bold">{link.region} • {link.currentUtil}% Load</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[14px] font-black tabular-nums text-emerald-600">{link.efficiencyScore}</span>
+                                        <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Efficiency</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
+                    <p className="text-[9px] text-muted-foreground mt-4 leading-tight bg-emerald-500/5 p-2 rounded border border-emerald-500/20">
+                        Calc: (Avg Util × Stability × Biz Usage) – <span className="font-bold">Overprovision Penalty</span>. Score &gt;80 is Peak Asset Value.
+                    </p>
                 </div>
-
             </div>
 
-            {/* ---------------- SECTION 5: HEATMAP (VISUAL PATTERNS) ---------------- */}
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                        <Activity size={14} className="text-purple-500" />
-                        Regional Utilization Heatmap (24h Activity)
-                    </h3>
-                    <div className="flex items-center gap-4">
-                        <div className="flex gap-2 items-center text-[10px] text-muted-foreground">
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-100"></div> Low</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-500"></div> Med</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-900"></div> High</span>
+            {/* --- SECTION 4: THE MASTER TABLE OF TRUTH --- */}
+            <div className="rounded-2xl border border-border bg-card shadow-xl overflow-hidden border-t-4 border-t-primary">
+                <div className="p-5 border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><MonitorPlay size={18} /></div>
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Airtel Backbone Performance Inventory</h3>
+                            <div className="flex gap-2 mt-1">
+                                <span className="text-[9px] font-black text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/50">Viewing: {filter} Segment Profile</span>
+                                <span className="text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">{filteredLinks.length} Segments Loaded</span>
+                            </div>
                         </div>
-                        <button onClick={() => exportToCSV(heatmapData, 'Regional_Heatmap_Raw')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setFilter('All')} className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-background border border-border/50 hover:bg-muted transition-all">Reset Filters</button>
+                        <button onClick={() => exportToCSV(filteredLinks, 'Master_Performance_Inventory')} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95">
+                            <Download size={16} /> Global CSV Export
+                        </button>
+                    </div>
+                </div>
+                <div className="max-h-[600px] overflow-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="text-[10px] uppercase font-black text-muted-foreground bg-muted/30 sticky top-0 z-10 backdrop-blur-md border-b border-border/50">
+                            <tr>
+                                <th className="p-4">Link / Segment</th>
+                                <th className="p-4">Regional Tier</th>
+                                <th className="p-4 text-center">Trend / Growth</th>
+                                <th className="p-4 text-center">Avg vs Peak Ratio</th>
+                                <th className="p-4 text-center">Stability Index</th>
+                                <th className="p-4 text-center w-[180px]">Util Intensity</th>
+                                <th className="p-4 text-right">Strategic Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-[12px] font-bold divide-y divide-border/20">
+                            {filteredLinks.map((row, i) => {
+                                const rec = getRecommendation(row);
+                                return (
+                                    <tr key={i} className="hover:bg-primary/5 transition-colors group">
+                                        <td className="p-4">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-black text-foreground group-hover:text-primary transition-colors cursor-pointer">{row.name}</span>
+                                                <span className="text-[9px] text-muted-foreground font-mono">{row.id} • {row.customer}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black">{row.region}</span>
+                                                <span className="text-[9px] text-muted-foreground opacity-70 underline decoration-primary/20">{row.tier} Tier Service</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <div className={cn("flex items-center gap-1 text-[10px] font-black", row.trend === 'Rising' ? "text-red-600" : row.trend === 'Declining' ? "text-emerald-600" : "text-muted-foreground")}>
+                                                    {row.trend === 'Rising' ? <TrendingUp size={12} /> : row.trend === 'Declining' ? <TrendingDown size={12} /> : <Activity size={12} />}
+                                                    {row.trend}
+                                                </div>
+                                                <span className="text-[9px] text-muted-foreground tabular-nums">({row.momGrowth > 0 ? '+' : ''}{row.momGrowth}% MoM)</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-center font-mono tabular-nums">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[11px] font-black">{row.currentUtil}% / {row.peakUtil}%</span>
+                                                <span className={cn("text-[9px] font-bold px-1.5 rounded", row.peakToAvgRatio > 1.8 ? "bg-amber-100 text-amber-700" : "text-muted-foreground")}>Ratio: {row.peakToAvgRatio}x</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
+                                                    row.stabilityScore === 'High' ? "bg-emerald-100 text-emerald-700" :
+                                                        row.stabilityScore === 'Medium' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                                )}>
+                                                    {row.stabilityScore} Score
+                                                </span>
+                                                <span className="text-[9px] text-muted-foreground mt-1 font-mono">Index: {row.stabilityValue}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden shadow-inner border border-border/30">
+                                                    <div className={cn("h-full transition-all duration-700", row.currentUtil > 85 ? "bg-red-500" : row.currentUtil > 65 ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${row.currentUtil}%` }} />
+                                                </div>
+                                                <span className={cn("min-w-[40px] text-right font-black tabular-nums font-mono text-[11px]", row.currentUtil > 85 ? "text-red-600" : "text-foreground")}>{row.currentUtil}%</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={cn("px-2.5 py-1 rounded-lg text-[9px] font-black shadow-sm border", rec.color)}>
+                                                    {rec.label}
+                                                </span>
+                                                <span className="text-[8px] text-muted-foreground font-medium italic opacity-70">
+                                                    {row.daysTo80 < 30 ? (
+                                                        <span className="text-red-500 font-bold">⚠️ Predicted Breach: {row.daysTo80} Days</span>
+                                                    ) : row.chronicUnderUtil ? (
+                                                        <span className="text-emerald-600 font-bold">Unused Capacity &gt;60 Days</span>
+                                                    ) : (
+                                                        'Utilization Profile: Sustained'
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Visual Heatmap Pattern Footer */}
+            <div className="p-6 rounded-2xl border border-border bg-card shadow-sm border-l-4 border-l-indigo-500">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Calendar size={16} className="text-indigo-500" />
+                        Airtel Regional Congestion Windows (24h Activity Loop)
+                    </h3>
+                    <div className="flex gap-3 text-[10px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-indigo-50 text-[8px] border border-border"></div> Low util</span>
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-indigo-500"></div> Peak window</span>
+                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-indigo-900"></div> Saturated</span>
                     </div>
                 </div>
                 <div className="grid grid-cols-4 lg:grid-cols-7 gap-2">
-                    {/* Header Row */}
-                    <div className="text-[10px] font-bold text-muted-foreground flex items-center justify-center p-2">REGION / HOUR</div>
-                    {['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'].map(h => (
-                        <div key={h} className="text-[10px] font-bold text-muted-foreground flex items-center justify-center p-2 bg-muted/20 rounded-md">
-                            {h}
-                        </div>
-                    ))}
+                    <div className="text-[10px] font-black text-muted-foreground p-3 bg-muted/10 rounded flex items-center justify-center italic">GEO / HR</div>
+                    {['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'].map(h => <div key={h} className="text-[10px] font-black text-muted-foreground p-3 bg-muted/30 rounded flex items-center justify-center">{h}</div>)}
 
-                    {/* Data Rows */}
-                    {['North', 'South', 'East', 'West'].map(region => (
-                        <>
-                            <div className="text-[10px] font-bold text-foreground flex items-center justify-center p-2 bg-muted/10 rounded-md">{region}</div>
-                            {heatmapData.filter(d => d.region === region).map((cell, i) => {
-                                const intensity = cell.value > 60 ? 'bg-blue-900 text-white' : cell.value > 30 ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-900';
+                    {['North Backbone', 'South Backbone', 'East Intra-Circle', 'West Intra-Circle'].map((r, ri) => (
+                        <React.Fragment key={r}>
+                            <div className="text-[10px] font-black text-foreground p-3 bg-muted/40 rounded flex items-center justify-center text-center leading-tight">{r}</div>
+                            {[1, 2, 3, 4, 5, 6].map(c => {
+                                const val = Math.floor(Math.random() * 60 + (c > 2 && c < 5 ? 35 : 0));
                                 return (
-                                    <div
-                                        key={i}
-                                        className={cn("text-[10px] font-bold flex items-center justify-center p-3 rounded-md transition-all hover:scale-105 cursor-pointer shadow-sm relative group", intensity)}
-                                        onClick={() => exportToCSV(LINKS_DATA.filter(l => l.region === region), `Heatmap_${region}_${cell.hour.replace(':', '')}_Detail`)}
-                                    >
-                                        {cell.value}%
-                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-full mb-1 bg-black text-white text-[9px] px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none">
-                                            {region} @ {cell.hour} <br /> (Click to Export)
+                                    <div key={c} className={cn("p-4 rounded-xl flex items-center justify-center text-[11px] font-black shadow-inner transition-all hover:scale-105 cursor-pointer relative group",
+                                        val > 80 ? "bg-indigo-900 text-white" : val > 50 ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "bg-indigo-50 text-indigo-900 border border-indigo-100"
+                                    )}>
+                                        {val}%
+                                        <div className="absolute opacity-0 group-hover:opacity-100 -top-8 bg-black text-white text-[9px] px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none">
+                                            {r} @ {c * 4 - 4}:00 <br /> Load Factor: {val}%
                                         </div>
                                     </div>
                                 );
                             })}
-                        </>
+                        </React.Fragment>
                     ))}
                 </div>
             </div>

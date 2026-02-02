@@ -30,7 +30,8 @@ import {
     Timer,
     Info,
     MousePointer2,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    TableProperties
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -137,7 +138,6 @@ export function PerformanceDashboard() {
     const { setSelectedModule } = useInventoryStore();
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
     const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
-    const [selectedView, setSelectedView] = useState<'OVERVIEW' | 'DRILLDOWN'>('OVERVIEW');
 
     // --- INTERDEPENDENT FILTERING LOGIC ---
     const filteredLinks = useMemo(() => {
@@ -154,7 +154,7 @@ export function PerformanceDashboard() {
 
     // --- CHART DATA GENERATORS ---
 
-    // 1. Regional Distribution Plot (Interdependent)
+    // 1. Regional Distribution Plot
     const regionalData = useMemo(() => {
         const counts = {} as Record<string, number>;
         ALL_LINKS.forEach(l => {
@@ -163,7 +163,7 @@ export function PerformanceDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, []);
 
-    // 2. Efficiency Heat Radar (Interdependent)
+    // 2. Efficiency Heat Radar
     const efficiencyRadarData = useMemo(() => {
         const regions = ['North', 'South', 'East', 'West'];
         return regions.map(r => {
@@ -181,7 +181,7 @@ export function PerformanceDashboard() {
         });
     }, []);
 
-    // 3. Utilization Buckets (Interdependent)
+    // 3. Utilization Buckets
     const bucketData = useMemo(() => {
         const data = selectedRegion ? ALL_LINKS.filter(l => l.region === selectedRegion) : ALL_LINKS;
         return [
@@ -192,7 +192,7 @@ export function PerformanceDashboard() {
         ];
     }, [selectedRegion]);
 
-    // 4. Forecast Plot (Interdependent)
+    // 4. Forecast Plot
     const forecastRiskData = useMemo(() => {
         return filteredLinks
             .filter(l => l.daysTo80 < 90 && l.daysTo80 > 1)
@@ -206,7 +206,7 @@ export function PerformanceDashboard() {
             }));
     }, [filteredLinks]);
 
-    // 5. Temporal Pattern Matrix (Interdependent)
+    // 5. Temporal Pattern Matrix
     const temporalData = useMemo(() => {
         const regions = ['North', 'South', 'East', 'West'];
         const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
@@ -257,11 +257,20 @@ export function PerformanceDashboard() {
 
             {/* --- TOP ROW: INTERDEPENDENT KPI PLOTS --- */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {/* 1. Regional Traffic Hub (Interactive Map Alternative) */}
+                {/* 1. Regional Traffic Hub */}
                 <div className="col-span-1 rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between group">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-                        <Network size={14} className="text-primary" /> Regional Assets
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Network size={14} className="text-primary" /> Regional Assets
+                        </h3>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); exportToCSV(regionalData, 'Regional_Asset_Counts'); }}
+                            className="p-1.5 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Export Counts"
+                        >
+                            <Download size={12} />
+                        </button>
+                    </div>
                     <div className="flex-1 min-h-[140px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={regionalData} onClick={(d) => d && setSelectedRegion(d.activeLabel || null)}>
@@ -272,18 +281,28 @@ export function PerformanceDashboard() {
                                     {regionalData.map((entry, index) => (
                                         <Cell key={index} fill={selectedRegion === entry.name ? '#00a58e' : '#94a3b8'} fillOpacity={selectedRegion === entry.name ? 1 : 0.4} />
                                     ))}
+                                    <LabelList dataKey="value" position="top" style={{ fontSize: '9px', fontWeight: '900', fill: 'hsl(var(--muted-foreground))' }} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-bold text-center mt-2 opacity-60">Click Bar to Filter Entire Page</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-bold text-center mt-2 opacity-60">Click Bar to Filter/Export Region</p>
                 </div>
 
-                {/* 2. Utilization Pyramid (Interactive Bucketing) */}
+                {/* 2. Utilization Intensity Pyramid */}
                 <div className="col-span-1 rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between group">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-                        <Activity size={14} className="text-amber-500" /> Util Intensity
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Activity size={14} className="text-amber-500" /> Util Intensity
+                        </h3>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); exportToCSV(bucketData, 'Utilization_Bucket_Counts'); }}
+                            className="p-1.5 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Export Counts"
+                        >
+                            <Download size={12} />
+                        </button>
+                    </div>
                     <div className="flex-1 min-h-[140px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -304,14 +323,22 @@ export function PerformanceDashboard() {
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <p className="text-[8px] text-muted-foreground uppercase font-bold text-center mt-2 opacity-60">Click Segment to Isolate Risks</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-bold text-center mt-2 opacity-60">Click Segment to Isolate/Export</p>
                 </div>
 
-                {/* 3. Regional Health Profile (Interdependable Radar) */}
-                <div className="col-span-1 lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col group">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-                        <Shuffle size={14} className="text-indigo-500" /> Operational Matrix Correlation
-                    </h3>
+                {/* 3. Regional Health Profile Radar */}
+                <div className="col-span-1 lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col group relative">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Shuffle size={14} className="text-indigo-500" /> Operational Matrix Correlation
+                        </h3>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); exportToCSV(efficiencyRadarData, 'Regional_Efficiency_Radar_Stats'); }}
+                            className="p-2 hover:bg-muted rounded-xl text-muted-foreground opacity-0 group-hover:opacity-100 transition-all border border-transparent hover:border-border"
+                        >
+                            <Download size={14} />
+                        </button>
+                    </div>
                     <div className="flex-1 min-h-[140px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart data={efficiencyRadarData} margin={{ top: 0, right: 30, bottom: 0, left: 30 }}>
@@ -331,14 +358,14 @@ export function PerformanceDashboard() {
             {/* --- MIDDLE ROW: DEEP-SCAN INTERACTIVE PLOTS --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Capacity Breach Forecast (Interdependable with Table) */}
-                <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                {/* Capacity Breach Forecast */}
+                <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col group">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <Clock size={16} className="text-destructive animate-pulse" />
                             Time-to-Breach Simulation ({selectedRegion || 'Global'})
                         </h3>
-                        <button onClick={() => exportToCSV(forecastRiskData, 'Breach_Simulation')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50 transition-all"><Download size={14} /></button>
+                        <button onClick={() => exportToCSV(forecastRiskData, `Breach_Risk_Forecast_${selectedRegion || 'Global'}`)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground bg-muted/30 border border-border/50 transition-all opacity-0 group-hover:opacity-100"><Download size={14} /></button>
                     </div>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -351,18 +378,21 @@ export function PerformanceDashboard() {
                                     {forecastRiskData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.days < 15 ? '#ef4444' : entry.days < 45 ? '#f59e0b' : '#3b82f6'} />
                                     ))}
-                                    <LabelList dataKey="days" position="right" style={{ fontSize: '11px', fontWeight: 'black' }} />
+                                    <LabelList dataKey="days" position="right" style={{ fontSize: '11px', fontWeight: 'black', fill: '#ef4444' }} formatter={(v: any) => `${v}d`} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Efficiency Correlation Plot (Interdependable) */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
-                        <Gauge size={16} className="text-emerald-500" /> Efficiency vs Utilization Scatter
-                    </h3>
+                {/* Efficiency Correlation Plot */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col group">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Gauge size={16} className="text-emerald-500" /> Efficiency vs Utilization Scatter
+                        </h3>
+                        <button onClick={() => exportToCSV(filteredLinks.slice(0, 50), 'Efficiency_Scatter_Data')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"><Download size={14} /></button>
+                    </div>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
@@ -398,8 +428,8 @@ export function PerformanceDashboard() {
                             </div>
                         </div>
                     </div>
-                    <button onClick={() => exportToCSV(filteredLinks, 'Dynamic_Performance_Inventory')} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95">
-                        <Download size={16} /> Export View Dataset
+                    <button onClick={() => exportToCSV(filteredLinks, 'Performance_Diagnostic_Inventory')} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95">
+                        <Download size={16} /> Export Detailed Dataset
                     </button>
                 </div>
                 <div className="max-h-[500px] overflow-auto">
@@ -463,11 +493,14 @@ export function PerformanceDashboard() {
             </div>
 
             {/* --- TEMPORAL PATTERN RADAR FOOTER --- */}
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm border-l-4 border-l-primary flex flex-col lg:flex-row gap-8 items-center">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm border-l-4 border-l-primary flex flex-col lg:flex-row gap-8 items-center group">
                 <div className="w-full lg:w-1/3">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2.5 bg-primary/10 text-primary rounded-xl"><History size={20} /></div>
-                        <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Regional Peak Correlator</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl"><History size={20} /></div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Regional Peak Correlator</h3>
+                        </div>
+                        <button onClick={() => exportToCSV(temporalData, 'Temporal_Peak_Baseline')} className="p-2 hover:bg-muted rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"><Download size={14} /></button>
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted-foreground font-medium uppercase tracking-tight opacity-70">
                         Dynamic cross-region load simulation. The center plot shows real-time temporal baseline shifts.

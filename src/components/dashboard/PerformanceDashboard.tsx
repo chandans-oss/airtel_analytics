@@ -262,7 +262,7 @@ export function PerformanceDashboard() {
                             <div className="flex items-baseline gap-2">
                                 <h3 className="text-3xl font-black text-foreground">{criticalLinks.length}</h3>
                                 <span className="text-[10px] font-bold text-destructive flex items-center gap-1">
-                                    <TrendingUp size={10} /> >90% Util
+                                    <TrendingUp size={10} /> &gt;90% Util
                                 </span>
                             </div>
                         </div>
@@ -563,7 +563,7 @@ export function PerformanceDashboard() {
                         </ResponsiveContainer>
                     </div>
                     <p className="text-[9px] text-center text-muted-foreground mt-2">
-                        Bubble size represents <span className="font-bold">Packet Loss %</span>. High latency typically appearing >80% Load.
+                        Bubble size represents <span className="font-bold">Packet Loss %</span>. High latency typically appearing &gt;80% Load.
                     </p>
                 </div>
 

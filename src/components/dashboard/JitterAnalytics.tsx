@@ -120,7 +120,7 @@ export function JitterAnalytics() {
                     <div className="p-2 bg-red-500/10 rounded-lg text-destructive"><XCircle size={20} /></div>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-purple-500/50 transition-colors" onClick={() => setFilter('High Jitter')}>
-                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">High Jitter (>30ms)</p><p className="text-2xl font-black text-purple-600">{stats.highJitter}</p></div>
+                    <div><p className="text-[10px] font-bold uppercase text-muted-foreground">High Jitter (&gt;30ms)</p><p className="text-2xl font-black text-purple-600">{stats.highJitter}</p></div>
                     <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><SignalHigh size={20} /></div>
                 </div>
             </div>

@@ -108,20 +108,6 @@ export function QosAnalytics() {
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Traffic Prioritization • Queue Diagnostics • Policy Enforcement</p>
                     </div>
                 </div>
-
-                {/* Explainability Banner */}
-                <div className="mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3 shadow-inner">
-                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-600 mt-1"><Info size={18} /></div>
-                    <div>
-                        <h4 className="text-[11px] font-black uppercase text-amber-700 tracking-wider mb-1">Understanding Policy Discards</h4>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground max-w-4xl">
-                            Quality of Service (QoS) ensures that Tier-1 traffic like <strong>Voice (EF)</strong> and <strong>Signaling (CS3)</strong> is prioritized during congestion.
-                            <strong>Drops</strong> occur when a queue buffer is full.
-                            If you see drops in <strong>Voice</strong> classes, user experience is actively degraded.
-                            <strong>Policy Mismatch</strong> suggests that the router config does not match the actual traffic classes detected.
-                        </p>
-                    </div>
-                </div>
             </div>
 
             {/* KPI Cards */}

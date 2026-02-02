@@ -101,20 +101,6 @@ export function BandwidthAnalytics() {
                         </p>
                     </div>
                 </div>
-
-                {/* Explainability Banner */}
-                <div className="mt-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-start gap-3 shadow-inner">
-                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500 mt-1"><Info size={18} /></div>
-                    <div>
-                        <h4 className="text-[11px] font-black uppercase text-blue-700 tracking-wider mb-1">How to interpret Bandwidth Polling</h4>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground max-w-4xl">
-                            Bandwidth data represents the real-time throughput of your backbone.
-                            <strong>'Polled'</strong> status indicates successful SNMP data retrieval.
-                            If a link is <strong>'Not Polled'</strong>, it means the physical interface may be UP, but the data collection engine cannot reach the MIB for performance statistics.
-                            High utilization (&gt;80%) triggers deep-scan alerts for potential congestion.
-                        </p>
-                    </div>
-                </div>
             </div>
 
             {/* KPI Cards */}

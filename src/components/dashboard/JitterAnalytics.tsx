@@ -102,19 +102,6 @@ export function JitterAnalytics() {
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Variance Analysis • Latency Spikes • SLA Compliance</p>
                     </div>
                 </div>
-
-                {/* Explainability Banner */}
-                <div className="mt-4 p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 flex items-start gap-3 shadow-inner">
-                    <div className="p-2 bg-rose-500/10 rounded-lg text-rose-600 mt-1"><Info size={18} /></div>
-                    <div>
-                        <h4 className="text-[11px] font-black uppercase text-rose-700 tracking-wider mb-1">Impact of Network Jitter</h4>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground max-w-4xl">
-                            Jitter measures the <strong>variation in latency</strong> over time.
-                            Constant latency (even if high) is often manageable, but high jitter causes packet reordering and buffer bloat.
-                            For Voice/Video, jitter above <strong>30ms</strong> is considered an SLA violation and causes audible clipping.
-                        </p>
-                    </div>
-                </div>
             </div>
 
             {/* KPI Cards */}

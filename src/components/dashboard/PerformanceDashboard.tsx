@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useInventoryStore } from '@/store/inventoryStore';
 import {
     Activity,
@@ -12,221 +12,431 @@ import {
     AlertTriangle,
     ChevronLeft,
     Router,
-    Wifi
+    Wifi,
+    TrendingUp,
+    TrendingDown,
+    Clock,
+    Calendar,
+    BarChart3,
+    ShieldAlert,
+    Gauge,
+    ArrowUpRight,
+    ArrowDownRight,
+    Search,
+    Filter,
+    Layers,
+    Shuffle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
-    Cell, CartesianGrid, Legend, PieChart, Pie, LabelList
+    Cell, CartesianGrid, Legend, PieChart, Pie, LabelList,
+    AreaChart, Area, LineChart, Line, ScatterChart, Scatter, ZAxis, ReferenceLine
 } from 'recharts';
 import { exportToCSV } from '@/utils/exportUtils';
 
-// --- MOCK DATA FROM USER ---
-const PERFORMANCE_MOCK_DATA = [
-    { loopback_ip: '172.21.112.222', wan_ip: '172.28.144.42', device_type: 'Switch', region: 'North', make: 'Dell', bgp_config: 0, bgp_status: 'Not Configured', qos_config: 0, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 99, wan_snmp: 100, wan_ping: 100, cpu: 29, mem: 86 },
-    { loopback_ip: '172.22.36.109', wan_ip: '172.30.124.224', device_type: 'Switch', region: 'South', make: 'Dell', bgp_config: 0, bgp_status: 'Up', qos_config: 0, qos_res: 'Yes', loopback_snmp: 0, loopback_ping: 0, wan_snmp: 95, wan_ping: 100, cpu: 75, mem: 32 },
-    { loopback_ip: '172.31.212.172', wan_ip: '172.25.76.244', device_type: 'Switch', region: 'East', make: 'Huawei', bgp_config: 1, bgp_status: 'Not Configured', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 99, wan_snmp: 95, wan_ping: 95, cpu: 31, mem: 68 },
-    { loopback_ip: '172.21.137.150', wan_ip: '172.31.245.189', device_type: 'Router', region: 'West', make: 'Cisco', bgp_config: 0, bgp_status: 'Up', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 100, wan_snmp: 99, wan_ping: 99, cpu: 59, mem: 58 },
-    { loopback_ip: '172.17.105.55', wan_ip: '172.25.194.192', device_type: 'Switch', region: 'North', make: 'Aruba', bgp_config: 1, bgp_status: 'Up', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 100, wan_snmp: 100, wan_ping: 95, cpu: 62, mem: 69 },
-    { loopback_ip: '172.24.130.175', wan_ip: '172.18.170.126', device_type: 'Router', region: 'South', make: 'Palo Alto', bgp_config: 1, bgp_status: 'Up', qos_config: 1, qos_res: 'Yes', loopback_snmp: 0, loopback_ping: 100, wan_snmp: 98, wan_ping: 100, cpu: 50, mem: 70 },
-    { loopback_ip: '172.31.237.118', wan_ip: '172.28.91.2', device_type: 'Switch', region: 'East', make: 'Fortinet', bgp_config: 1, bgp_status: 'Up', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 100, wan_snmp: 100, wan_ping: 99, cpu: 79, mem: 67 },
-    { loopback_ip: '172.18.120.106', wan_ip: '172.21.171.225', device_type: 'Router', region: 'West', make: 'Mikrotik', bgp_config: 1, bgp_status: 'Up', qos_config: 0, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 100, wan_snmp: 100, wan_ping: 99, cpu: 17, mem: 88 },
-    { loopback_ip: '172.28.216.147', wan_ip: '172.23.102.142', device_type: 'Router', region: 'North', make: 'Dell', bgp_config: 1, bgp_status: 'Up', qos_config: 1, qos_res: 'Yes', loopback_snmp: 99, loopback_ping: 99, wan_snmp: 100, wan_ping: 100, cpu: 54, mem: 58 },
-    { loopback_ip: '172.31.79.113', wan_ip: '172.21.155.179', device_type: 'Router', region: 'South', make: 'Huawei', bgp_config: 1, bgp_status: 'Not Configured', qos_config: 1, qos_res: 'Yes', loopback_snmp: 98, loopback_ping: 98, wan_snmp: 98, wan_ping: 99, cpu: 57, mem: 33 },
-    { loopback_ip: '172.17.31.34', wan_ip: '172.21.223.32', device_type: 'Switch', region: 'East', make: 'Huawei', bgp_config: 1, bgp_status: 'Not Configured', qos_config: 1, qos_res: 'Yes', loopback_snmp: 98, loopback_ping: 99, wan_snmp: 98, wan_ping: 100, cpu: 62, mem: 33 },
-    { loopback_ip: '172.18.24.197', wan_ip: '172.19.19.79', device_type: 'Switch', region: 'West', make: 'Cisco', bgp_config: 1, bgp_status: 'Up', qos_config: 1, qos_res: 'No', loopback_snmp: 100, loopback_ping: 98, wan_snmp: 0, wan_ping: 98, cpu: 52, mem: 71 },
-    { loopback_ip: '172.22.189.38', wan_ip: '172.25.220.151', device_type: 'Router', region: 'North', make: 'Cisco', bgp_config: 0, bgp_status: 'Up', qos_config: 1, qos_res: 'No', loopback_snmp: 0, loopback_ping: 100, wan_snmp: 99, wan_ping: 99, cpu: 82, mem: 61 },
-    { loopback_ip: '172.20.224.10', wan_ip: '172.25.9.37', device_type: 'Switch', region: 'East', make: 'Mikrotik', bgp_config: 0, bgp_status: 'Down', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 100, wan_snmp: 100, wan_ping: 98, cpu: 57, mem: 61 },
-    { loopback_ip: '172.31.166.67', wan_ip: '172.29.174.106', device_type: 'Switch', region: 'West', make: 'Palo Alto', bgp_config: 1, bgp_status: 'Down', qos_config: 1, qos_res: 'No', loopback_snmp: 0, loopback_ping: 99, wan_snmp: 0, wan_ping: 100, cpu: 70, mem: 35 },
-    { loopback_ip: '172.27.223.92', wan_ip: '172.29.221.208', device_type: 'Router', region: 'North', make: 'Fortinet', bgp_config: 1, bgp_status: 'Down', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 99, wan_snmp: 98, wan_ping: 0, cpu: 85, mem: 72 },
-    { loopback_ip: '172.21.114.175', wan_ip: '172.29.146.22', device_type: 'Router', region: 'South', make: 'Huawei', bgp_config: 1, bgp_status: 'Not Configured', qos_config: 1, qos_res: 'Yes', loopback_snmp: 100, loopback_ping: 0, wan_snmp: 100, wan_ping: 100, cpu: 40, mem: 39 },
-    { loopback_ip: '172.16.246.143', wan_ip: '172.17.18.85', device_type: 'Router', region: 'North', make: 'Dell', bgp_config: 0, bgp_status: 'Down', qos_config: 0, qos_res: 'Yes', loopback_snmp: 99, loopback_ping: 0, wan_snmp: 100, wan_ping: 100, cpu: 62, mem: 37 }
-];
+// --- ADVANCED MOCK DATA GENERATOR ---
+
+const generateMockLinks = (count: number) => {
+    const regions = ['North', 'South', 'East', 'West'];
+    const tiers = ['Gold', 'Silver', 'Bronze'];
+    const serviceTypes = ['MPLS', 'Internet', 'P2P'];
+    const customers = ['HDFC Bank', 'Infosys', 'Wipro', 'TCS', 'Axis Bank', 'Flipkart'];
+
+    return Array.from({ length: count }).map((_, i) => {
+        const id = `LNK-${1000 + i}`;
+        const region = regions[Math.floor(Math.random() * regions.length)];
+        const tier = tiers[Math.floor(Math.random() * tiers.length)];
+        const service = serviceTypes[Math.floor(Math.random() * serviceTypes.length)];
+        const customer = customers[Math.floor(Math.random() * customers.length)];
+
+        // Utilization Profile
+        let utilBase = Math.random() * 100;
+
+        // Enforce some realistic clusters
+        if (i < count * 0.1) utilBase = 90 + Math.random() * 8; // Critical
+        else if (i < count * 0.25) utilBase = 70 + Math.random() * 15; // High
+        else if (i > count * 0.8) utilBase = Math.random() * 8; // Underutilized
+
+        const currentUtil = Math.min(99, Math.max(1, utilBase));
+
+        // Trend Analysis
+        const trend = Math.random() > 0.6 ? (Math.random() > 0.5 ? 'Rising' : 'Declining') : 'Stable';
+        const momGrowth = trend === 'Rising' ? Math.floor(Math.random() * 15 + 2) :
+            trend === 'Declining' ? -Math.floor(Math.random() * 10) : Math.floor(Math.random() * 4 - 2);
+
+        // Business vs Non-Business
+        const isBursty = Math.random() > 0.7;
+        const peakToAvg = isBursty ? (1.8 + Math.random()) : (1.1 + Math.random() * 0.3);
+        const businessUtil = Math.min(100, currentUtil * 1.1);
+        const nonBusinessUtil = currentUtil * 0.4; // Significantly lower typically
+
+        // Forecasting
+        const daysTo80 = trend === 'Rising' && currentUtil < 80
+            ? Math.floor((80 - currentUtil) / (momGrowth / 30)) // Rough approx
+            : 0;
+
+        // Stability
+        const variance = isBursty ? Math.random() * 20 : Math.random() * 5;
+        const stabilityScore = variance > 15 ? 'Low' : variance > 5 ? 'Medium' : 'High';
+
+        // Errors & Performance
+        const packetLoss = currentUtil > 80 ? Math.random() * 5 : 0;
+        const latency = 20 + (currentUtil > 70 ? (currentUtil - 70) * 2 : 0) + Math.random() * 10;
+
+        // Redundancy
+        const backupUtil = Math.random() * 30; // Usually low
+        const failOverUtil = Math.min(100, currentUtil + backupUtil);
+        const failoverRisk = failOverUtil > 90 ? 'High' : 'Low';
+
+        return {
+            id,
+            name: `${region}-Core-${i}`,
+            region,
+            tier,
+            service,
+            customer,
+            currentUtil: Number(currentUtil.toFixed(1)),
+            trend,
+            momGrowth,
+            peakToAvg: Number(peakToAvg.toFixed(2)),
+            businessUtil: Number(businessUtil.toFixed(1)),
+            nonBusinessUtil: Number(nonBusinessUtil.toFixed(1)),
+            daysTo80: daysTo80 > 0 ? daysTo80 : 999, // 999 = safe or already breached
+            stabilityScore,
+            packetLoss: Number(packetLoss.toFixed(2)),
+            latency: Math.floor(latency),
+            backupUtil: Number(backupUtil.toFixed(1)),
+            failOverUtil: Number(failOverUtil.toFixed(1)),
+            failoverRisk,
+            efficiencyScore: Math.floor((currentUtil * (stabilityScore === 'High' ? 1.2 : 0.9)) - (currentUtil < 10 ? 20 : 0))
+        };
+    });
+};
+
+const LINKS_DATA = generateMockLinks(100);
+
+// --- COMPONENT ---
 
 export function PerformanceDashboard() {
     const { setSelectedModule } = useInventoryStore();
+    const [selectedView, setSelectedView] = useState<'OVERVIEW' | 'PLANNING' | 'OPTIMIZATION'>('OVERVIEW');
 
-    // --- Aggregated Stats ---
-    const stats = useMemo(() => {
-        // BGP
-        const bgpTotal = PERFORMANCE_MOCK_DATA.filter(d => d.bgp_config === 1).length;
-        const bgpUp = PERFORMANCE_MOCK_DATA.filter(d => d.bgp_config === 1 && d.bgp_status === 'Up').length;
-        const bgpDown = PERFORMANCE_MOCK_DATA.filter(d => d.bgp_config === 1 && d.bgp_status === 'Down').length;
+    // --- DERIVED ANALYTICS ---
 
-        // QoS
-        const qosTotal = PERFORMANCE_MOCK_DATA.filter(d => d.qos_config === 1).length;
-        const qosActive = PERFORMANCE_MOCK_DATA.filter(d => d.qos_config === 1 && d.qos_res === 'Yes').length;
+    // 1. High Utilized Links
+    const criticalLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil > 90), []);
+    const highLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil >= 70 && l.currentUtil <= 90), []);
 
-        // Reachability (Loopback SNMP)
-        const snmpPolling = PERFORMANCE_MOCK_DATA.filter(d => d.loopback_snmp > 0).length;
-        const snmpFails = PERFORMANCE_MOCK_DATA.filter(d => d.loopback_snmp === 0).length;
+    // 2. Low Utilized Links
+    const zombieLinks = useMemo(() => LINKS_DATA.filter(l => l.currentUtil < 5), []);
 
-        return {
-            bgp: [
-                { name: 'Configured', value: bgpTotal, fill: '#3b82f6' },
-                { name: 'Up', value: bgpUp, fill: '#22c55e' },
-                { name: 'Down', value: bgpDown, fill: '#ef4444' }
-            ],
-            qos: [
-                { name: 'Configured', value: qosTotal, fill: '#8b5cf6' },
-                { name: 'Active Polling', value: qosActive, fill: '#10b981' },
-                { name: 'Not Polling', value: qosTotal - qosActive, fill: '#f59e0b' }
-            ],
-            reachability: [
-                { name: 'Polling OK', value: snmpPolling, fill: '#14b8a6' },
-                { name: 'No SNMP', value: snmpFails, fill: '#ef4444' }
-            ]
-        };
+    // 3. Trends
+    const risingLinks = useMemo(() => LINKS_DATA.filter(l => l.trend === 'Rising' && l.currentUtil > 50), []);
+
+    // 4. Forecast Data (Top 5 Riskiest)
+    const forecastRiskData = useMemo(() => {
+        return risingLinks
+            .filter(l => l.daysTo80 < 60) // Only imminent risks
+            .sort((a, b) => a.daysTo80 - b.daysTo80)
+            .slice(0, 5)
+            .map(l => ({
+                name: l.name,
+                current: l.currentUtil,
+                days: Math.floor(l.daysTo80),
+                growth: l.momGrowth,
+                fullData: l
+            }));
+    }, [risingLinks]);
+
+    // 5. Business Hours vs Non-Business (Aggregate)
+    const timeOfDayComparison = useMemo(() => {
+        const avgBiz = LINKS_DATA.reduce((acc, curr) => acc + curr.businessUtil, 0) / LINKS_DATA.length;
+        const avgNonBiz = LINKS_DATA.reduce((acc, curr) => acc + curr.nonBusinessUtil, 0) / LINKS_DATA.length;
+        return [
+            { name: 'Business Hours', value: Math.floor(avgBiz), fill: '#3b82f6' },
+            { name: 'Non-Business Hours', value: Math.floor(avgNonBiz), fill: '#94a3b8' }
+        ];
     }, []);
 
-    const deviceMakeData = useMemo(() => {
-        const counts: Record<string, number> = {};
-        PERFORMANCE_MOCK_DATA.forEach(d => {
-            counts[d.make] = (counts[d.make] || 0) + 1;
+    // 6. Efficiency Scores (Top 7)
+    const topEfficientLinks = useMemo(() => {
+        return [...LINKS_DATA].sort((a, b) => b.efficiencyScore - a.efficiencyScore).slice(0, 7);
+    }, []);
+
+    // 7. Heatmap Data (Mock Region vs Hour simulation)
+    const heatmapData = useMemo(() => {
+        const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+        return ['North', 'South', 'East', 'West'].flatMap(region =>
+            hours.map(hour => ({
+                region,
+                hour,
+                value: Math.floor(Math.random() * 60 + (hour === '12:00' || hour === '16:00' ? 30 : 0))
+            }))
+        );
+    }, []);
+
+    // 8. Customer Impact (New)
+    const customerImpactDates = useMemo(() => {
+        const impact = {} as Record<string, number>;
+        LINKS_DATA.forEach(l => {
+            if (!impact[l.customer]) impact[l.customer] = 0;
+            impact[l.customer] += l.currentUtil;
         });
-        return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+        return Object.entries(impact)
+            .map(([name, totalUtil]) => ({ name, value: Math.round(totalUtil / 10), fill: '#8b5cf6' })) // Avg-ish
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
     }, []);
 
-    const deviceTypeData = useMemo(() => {
-        const counts: Record<string, number> = {};
-        PERFORMANCE_MOCK_DATA.forEach(d => {
-            counts[d.device_type] = (counts[d.device_type] || 0) + 1;
-        });
-        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    // 9. Redundancy Risk (New)
+    const redundancyRiskData = useMemo(() => {
+        const highRisk = LINKS_DATA.filter(l => l.failoverRisk === 'High');
+        return highRisk.sort((a, b) => b.failOverUtil - a.failOverUtil).slice(0, 5).map(l => ({
+            name: l.name,
+            primary: l.currentUtil,
+            backup: l.backupUtil,
+            projected: l.failOverUtil,
+            fullData: l
+        }));
     }, []);
 
-    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
+    // --- HANDLERS ---
+    const handleBarClick = (data: any, prefix: string) => {
+        if (data && data.payload && data.payload.fullData) {
+            exportToCSV([data.payload.fullData], `${prefix}_${data.payload.name}_Details`);
+        } else if (data && data.payload) {
+            // Fallback for aggregate charts
+            exportToCSV([data.payload], `${prefix}_${data.payload.name || 'Data'}`);
+        }
+    };
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-500">
+        <div className="space-y-6 animate-in slide-in-from-right duration-500 pb-10">
             {/* Header */}
-            <div className="flex items-center gap-3 px-1 mb-4">
-                <button
-                    onClick={() => setSelectedModule('unified')}
-                    className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
-                    title="Back to Overview"
-                >
-                    <ChevronLeft size={20} strokeWidth={2.5} />
-                </button>
-                <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
-                <div>
-                    <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
-                        Performance & Polling Analytics
-                    </h2>
-                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
-                        Device compliance & Protocol Status
-                    </p>
+            <div className="flex items-center justify-between px-1 mb-4">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setSelectedModule('unified')}
+                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-all flex items-center justify-center"
+                        title="Back to Overview"
+                    >
+                        <ChevronLeft size={20} strokeWidth={2.5} />
+                    </button>
+                    <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
+                    <div>
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
+                            Performance & Capacity Intelligence
+                        </h2>
+                        <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
+                            Predictive Utilization • Efficiency Scoring • Cost Optimization
+                        </p>
+                    </div>
+                </div>
+                <div className="flex bg-muted/50 p-1 rounded-lg">
+                    {['OVERVIEW', 'PLANNING', 'OPTIMIZATION'].map(view => (
+                        <button
+                            key={view}
+                            onClick={() => setSelectedView(view as any)}
+                            className={cn(
+                                "px-3 py-1 text-[10px] font-bold uppercase transition-all rounded-md",
+                                selectedView === view ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            {view}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* KPI Cards */}
+            {/* ---------------- SECTION 1: CRITICAL UTILIZATION METRICS ---------------- */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Total Devices</p>
-                        <p className="text-2xl font-black">{PERFORMANCE_MOCK_DATA.length}</p>
+                {/* Critical > 90% */}
+                <div className="rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <AlertTriangle size={64} className="text-destructive" />
                     </div>
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary"><Server size={20} /></div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground">BGP Compliance</p>
-                        <p className="text-2xl font-black">{Math.round((stats.bgp[1].value / (stats.bgp[1].value + stats.bgp[2].value || 1)) * 100)}%</p>
+                    <div className="flex justify-between items-start z-10">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Critical Saturation</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-3xl font-black text-foreground">{criticalLinks.length}</h3>
+                                <span className="text-[10px] font-bold text-destructive flex items-center gap-1">
+                                    <TrendingUp size={10} /> >90% Util
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(criticalLinks, 'Critical_Links_Report')} className="p-1.5 rounded-md hover:bg-destructive hover:text-white text-muted-foreground transition-all">
+                            <Download size={14} />
+                        </button>
                     </div>
-                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Network size={20} /></div>
+                    <div className="mt-3">
+                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-destructive/20">
+                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
+                            <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
+                                🔴 Upgrade Required
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Avg CPU Util</p>
-                        <p className="text-2xl font-black">
-                            {Math.round(PERFORMANCE_MOCK_DATA.reduce((a, b) => a + b.cpu, 0) / PERFORMANCE_MOCK_DATA.length)}%
+
+                {/* High 70-90% */}
+                <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Activity size={64} className="text-amber-500" />
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">High Load Warning</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-3xl font-black text-foreground">{highLinks.length}</h3>
+                                <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                                    <TrendingUp size={10} /> 70-90% Util
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(highLinks, 'High_Util_Links_Report')} className="p-1.5 rounded-md hover:bg-amber-500 hover:text-white text-muted-foreground transition-all">
+                            <Download size={14} />
+                        </button>
+                    </div>
+                    <div className="mt-3">
+                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-amber-500/20">
+                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                🟠 Monitor Closely
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Underutilized < 5% */}
+                <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <ArrowDownRight size={64} className="text-blue-500" />
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Zombie Links</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-3xl font-black text-foreground">{zombieLinks.length}</h3>
+                                <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1">
+                                    <TrendingDown size={10} /> &lt;5% Util
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(zombieLinks, 'Zombie_Links_Report')} className="p-1.5 rounded-md hover:bg-blue-500 hover:text-white text-muted-foreground transition-all">
+                            <Download size={14} />
+                        </button>
+                    </div>
+                    <div className="mt-3">
+                        <div className="bg-background/40 backdrop-blur-sm rounded-lg p-2 border border-blue-500/20">
+                            <p className="text-[9px] text-muted-foreground mb-1">Recommendation:</p>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                                🟢 Downgrade Candidate
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Avg Efficiency Score */}
+                <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Gauge size={64} className="text-emerald-500" />
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Fleet Efficiency</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-3xl font-black text-foreground">
+                                    {Math.round(LINKS_DATA.reduce((acc, l) => acc + l.efficiencyScore, 0) / LINKS_DATA.length)}
+                                </h3>
+                                <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                                    score / 100
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={() => exportToCSV(LINKS_DATA, 'Full_Network_Efficiency_Report')} className="p-1.5 rounded-md hover:bg-emerald-500 hover:text-white text-muted-foreground transition-all">
+                            <Download size={14} />
+                        </button>
+                    </div>
+                    <div className="mt-3">
+                        <p className="text-[9px] text-muted-foreground leading-tight">
+                            Composite score of Utilization × Stability × Business Value.
                         </p>
                     </div>
-                    <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500"><Cpu size={20} /></div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Avg Memory Util</p>
-                        <p className="text-2xl font-black">
-                            {Math.round(PERFORMANCE_MOCK_DATA.reduce((a, b) => a + b.mem, 0) / PERFORMANCE_MOCK_DATA.length)}%
-                        </p>
-                    </div>
-                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><Activity size={20} /></div>
                 </div>
             </div>
 
-            {/* Row 1: Protocol & Reachability Analysis */}
+            {/* ---------------- SECTION 2: FORECASTING & TRENDS (PLANNING VIEW) ---------------- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* 1. BGP Status */}
-                <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Network size={14} className="text-blue-500" /> BGP Polling Status
-                        </h3>
-                        <button onClick={() => exportToCSV(stats.bgp, 'BGP_Brief')} className="text-muted-foreground hover:text-primary"><Download size={14} /></button>
+                {/* 1. Time-to-Threshold (Capacity Risk) */}
+                <div className="col-span-1 lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <Clock size={14} className="text-destructive" />
+                                Forecasted Capacity Breaches (Next 60 Days)
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                                Predictions based on 30-day linear regression trend analysis.
+                            </p>
+                        </div>
+                        <button onClick={() => exportToCSV(forecastRiskData, 'Capacity_Risk_Forecast')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
                     </div>
-                    <div className="h-[200px] w-full">
+                    <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.bgp} layout="vertical" margin={{ left: 20 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar dataKey="value" barSize={24} radius={[0, 4, 4, 0]}>
-                                    {stats.bgp.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                            <BarChart data={forecastRiskData} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                                <XAxis type="number" domain={[0, 60]} tick={{ fontSize: 10 }} label={{ value: 'Days to Breach (80%)', position: 'insideBottom', offset: -5, fontSize: 10 }} />
+                                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 700 }} />
+                                <Tooltip
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                                    formatter={(value: any, name: any, props: any) => {
+                                        if (name === 'days') return [`${value} Days`, 'Time to Breach'];
+                                        return [value, name];
+                                    }}
+                                />
+                                <Bar
+                                    dataKey="days"
+                                    barSize={20}
+                                    radius={[0, 4, 4, 0]}
+                                    onClick={(data) => handleBarClick(data, 'Forecast')}
+                                    cursor="pointer"
+                                >
+                                    {forecastRiskData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.days < 15 ? '#ef4444' : entry.days < 45 ? '#f59e0b' : '#3b82f6'} />
                                     ))}
-                                    <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                    <LabelList dataKey="days" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* 2. QoS Polling */}
-                <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm flex flex-col">
+                {/* 2. Business vs Non-Business Pattern */}
+                <div className="col-span-1 rounded-xl border border-border bg-card p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Zap size={14} className="text-purple-500" /> QoS Configuration
+                            <Clock size={14} className="text-blue-500" />
+                            Biz vs Non-Biz Utilization
                         </h3>
-                        <button onClick={() => exportToCSV(stats.qos, 'QoS_Brief')} className="text-muted-foreground hover:text-primary"><Download size={14} /></button>
+                        <button onClick={() => exportToCSV(LINKS_DATA, 'Business_Vs_NonBusiness_Stats')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
                     </div>
-                    <div className="h-[200px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.qos} layout="vertical" margin={{ left: 20 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar dataKey="value" barSize={24} radius={[0, 4, 4, 0]}>
-                                    {stats.qos.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                    <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* 3. Device Reachability */}
-                <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Wifi size={14} className="text-emerald-500" /> Loopback Reachability
-                        </h3>
-                        <button onClick={() => exportToCSV(stats.reachability, 'Reachability_Brief')} className="text-muted-foreground hover:text-primary"><Download size={14} /></button>
-                    </div>
-                    <div className="h-[200px] w-full">
+                    <div className="h-[200px] w-full relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={stats.reachability}
-                                    innerRadius={50}
-                                    outerRadius={70}
+                                    data={timeOfDayComparison}
+                                    innerRadius={60}
+                                    outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    onClick={(data) => exportToCSV(LINKS_DATA, `Export_${data.name}`)}
+                                    cursor="pointer"
                                 >
-                                    {stats.reachability.map((entry, index) => (
+                                    {timeOfDayComparison.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
                                     ))}
                                 </Pie>
@@ -234,128 +444,218 @@ export function PerformanceDashboard() {
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
                             </PieChart>
                         </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-[10px] text-muted-foreground font-medium uppercase">Avg Util</span>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
-            {/* Row 2: Device Segmentation */}
+            {/* ---------------- SECTION 3: NEW METRICS - CUSTOMER & REDUNDANCY ---------------- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Make Distribution */}
-                <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Device Make Distribution</h3>
-                        <button onClick={() => exportToCSV(deviceMakeData, 'Device_Make_Stats')} className="text-muted-foreground hover:text-primary"><Download size={14} /></button>
+
+                {/* Customer / Service Impact */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <Layers size={14} className="text-purple-500" />
+                                Top Customer Bandwidth Consumers
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground mt-1">Aggregated utilization by primary customer account.</p>
+                        </div>
+                        <button onClick={() => exportToCSV(customerImpactDates, 'Customer_Bandwidth_Impact')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
                     </div>
-                    <div className="h-[180px] w-full">
+                    <div className="h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={deviceMakeData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: 'hsl(var(--primary)/10%)' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40}>
-                                    <LabelList dataKey="value" position="top" style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                            <BarChart data={customerImpactDates} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 700 }} />
+                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                                <Bar
+                                    dataKey="value"
+                                    barSize={20}
+                                    radius={[0, 4, 4, 0]}
+                                    fill="#8b5cf6"
+                                    onClick={(data) => exportToCSV(LINKS_DATA.filter(l => l.customer === data.name), `Detailed_${data.name}_Links`)}
+                                    cursor="pointer"
+                                >
+                                    <LabelList dataKey="value" position="right" style={{ fontSize: '10px', fontWeight: 'bold' }} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Type Breakdown */}
-                <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Device Type Breakdown</h3>
-                        <button onClick={() => exportToCSV(deviceTypeData, 'Device_Type_Stats')} className="text-muted-foreground hover:text-primary"><Download size={14} /></button>
+                {/* Redundancy & Failover Risk */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <Shuffle size={14} className="text-destructive" />
+                                Redundancy Failover Simulation
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground mt-1">Projected utilization if primary link fails (Top Risks).</p>
+                        </div>
+                        <button onClick={() => exportToCSV(redundancyRiskData, 'Failover_Risk_Report')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
                     </div>
-                    <div className="h-[180px] w-full flex items-center justify-center gap-6">
+                    <div className="h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={deviceTypeData}
-                                    outerRadius={60}
-                                    dataKey="value"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                >
-                                    {deviceTypeData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                            </PieChart>
+                            <BarChart data={redundancyRiskData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" height={40} />
+                                <YAxis tick={{ fontSize: 10 }} />
+                                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.3)' }} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                                <Bar
+                                    dataKey="projected"
+                                    name="Projected Load"
+                                    fill="#ef4444"
+                                    barSize={30}
+                                    radius={[4, 4, 0, 0]}
+                                    onClick={(data) => handleBarClick(data, 'FailoverRisk')}
+                                    cursor="pointer"
+                                />
+                                <ReferenceLine y={100} stroke="red" strokeDasharray="3 3" label={{ value: 'Capacity Limit', position: 'top', fontSize: 9, fill: 'red' }} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
+
             </div>
 
-            {/* Row 3: Detailed Data Grid */}
-            <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/20">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Router size={16} className="text-primary" />
-                        Detailed Device Polling Statistics
-                    </h3>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">
-                            {PERFORMANCE_MOCK_DATA.length} Records
-                        </span>
-                        <button
-                            onClick={() => exportToCSV(PERFORMANCE_MOCK_DATA, 'Full_Performance_Report')}
-                            className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
-                        >
-                            <Download size={12} /> Export Full Report
-                        </button>
+            {/* ---------------- SECTION 4: PERFORMANCE CORRELATION & INSIGHTS ---------------- */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* 1. Error vs Utilization Scatter */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                            <ShieldAlert size={14} className="text-destructive" />
+                            Performance Impact Correlation
+                        </h3>
+                        <button onClick={() => exportToCSV(LINKS_DATA, 'Performance_Correlation_Data')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                    </div>
+                    <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                                <XAxis type="number" dataKey="currentUtil" name="Utilization" unit="%" tick={{ fontSize: 10 }} label={{ value: 'Utilization %', position: 'insideBottom', offset: -10, fontSize: 10 }} />
+                                <YAxis type="number" dataKey="latency" name="Latency" unit="ms" tick={{ fontSize: 10 }} label={{ value: 'Latency (ms)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                                <ZAxis type="number" dataKey="packetLoss" range={[20, 300]} name="Packet Loss" unit="%" />
+                                <Tooltip
+                                    cursor={{ strokeDasharray: '3 3' }}
+                                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                                />
+                                <Scatter
+                                    name="Links"
+                                    data={LINKS_DATA.filter(d => d.currentUtil > 50)}
+                                    fill="#8884d8"
+                                    onClick={(data) => exportToCSV([data.payload], `Scatter_Link_${data.payload.id}`)}
+                                >
+                                    {LINKS_DATA.filter(d => d.currentUtil > 50).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={Number(entry.packetLoss) > 2 ? '#ef4444' : Number(entry.packetLoss) > 0.5 ? '#f59e0b' : '#3b82f6'} cursor="pointer" />
+                                    ))}
+                                </Scatter>
+                                <ReferenceLine x={80} stroke="red" strokeDasharray="3 3" label={{ value: 'Throttling Threshold', position: 'insideTopLeft', fontSize: 10, fill: 'red' }} />
+                            </ScatterChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <p className="text-[9px] text-center text-muted-foreground mt-2">
+                        Bubble size represents <span className="font-bold">Packet Loss %</span>. High latency typically appearing >80% Load.
+                    </p>
+                </div>
+
+                {/* 2. Top Efficiency Scores */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                            <Gauge size={14} className="text-emerald-500" />
+                            Top Performing Links (Efficiency Score)
+                        </h3>
+                        <button onClick={() => exportToCSV(topEfficientLinks, 'Efficiency_Leaderboard')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="text-[9px] uppercase text-muted-foreground bg-muted/30">
+                                <tr>
+                                    <th className="p-2 pl-3">Link Name</th>
+                                    <th className="p-2">Region</th>
+                                    <th className="p-2 text-center">Stability</th>
+                                    <th className="p-2 text-right pr-3">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-[11px] font-medium divide-y divide-border/20">
+                                {topEfficientLinks.map((link, i) => (
+                                    <tr key={i} className="hover:bg-muted/10 group cursor-pointer" onClick={() => exportToCSV([link], `Link_${link.id}_Efficiency`)}>
+                                        <td className="p-2 pl-3 text-primary group-hover:underline">{link.name}</td>
+                                        <td className="p-2">{link.region}</td>
+                                        <td className="p-2 text-center">
+                                            <span className={cn(
+                                                "px-1.5 py-0.5 rounded text-[9px] uppercase font-bold",
+                                                link.stabilityScore === 'High' ? "bg-emerald-100 text-emerald-700" :
+                                                    link.stabilityScore === 'Medium' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                            )}>
+                                                {link.stabilityScore}
+                                            </span>
+                                        </td>
+                                        <td className="p-2 text-right pr-3 font-mono font-bold">{link.efficiencyScore}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div className="overflow-x-auto max-h-[400px]">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-muted/50 text-[9px] uppercase text-muted-foreground font-black tracking-wider sticky top-0 z-10 backdrop-blur-md">
-                            <tr>
-                                <th className="p-3">Device IP</th>
-                                <th className="p-3">Region</th>
-                                <th className="p-3">Make</th>
-                                <th className="p-3 text-center">BGP</th>
-                                <th className="p-3 text-center">QoS</th>
-                                <th className="p-3 text-center">LB SNMP</th>
-                                <th className="p-3 text-center">CPU %</th>
-                                <th className="p-3 text-center">Mem %</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-[11px] font-medium text-foreground divide-y divide-border/30">
-                            {PERFORMANCE_MOCK_DATA.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-muted/50 transition-colors group">
-                                    <td className="p-3 font-mono text-primary group-hover:underline cursor-pointer">{row.loopback_ip}</td>
-                                    <td className="p-3">{row.region}</td>
-                                    <td className="p-3">{row.make}</td>
-                                    <td className="p-3 text-center">
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[9px] font-bold border",
-                                            row.bgp_status === 'Up' ? "bg-green-500/10 text-green-600 border-green-500/20" :
-                                                row.bgp_status === 'Down' ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-muted text-muted-foreground border-transparent"
-                                        )}>
-                                            {row.bgp_status === 'Not Configured' ? 'N/A' : row.bgp_status}
-                                        </span>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                        <div className="flex justify-center">
-                                            {row.qos_res === 'Yes' ? <CheckCircle2 size={14} className="text-green-500" /> : <XCircle size={14} className="text-muted-foreground/50" />}
+
+            </div>
+
+            {/* ---------------- SECTION 5: HEATMAP (VISUAL PATTERNS) ---------------- */}
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                        <Activity size={14} className="text-purple-500" />
+                        Regional Utilization Heatmap (24h Activity)
+                    </h3>
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2 items-center text-[10px] text-muted-foreground">
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-100"></div> Low</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-500"></div> Med</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-blue-900"></div> High</span>
+                        </div>
+                        <button onClick={() => exportToCSV(heatmapData, 'Regional_Heatmap_Raw')} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-primary transition-colors bg-muted/20"><Download size={14} /></button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 lg:grid-cols-7 gap-2">
+                    {/* Header Row */}
+                    <div className="text-[10px] font-bold text-muted-foreground flex items-center justify-center p-2">REGION / HOUR</div>
+                    {['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'].map(h => (
+                        <div key={h} className="text-[10px] font-bold text-muted-foreground flex items-center justify-center p-2 bg-muted/20 rounded-md">
+                            {h}
+                        </div>
+                    ))}
+
+                    {/* Data Rows */}
+                    {['North', 'South', 'East', 'West'].map(region => (
+                        <>
+                            <div className="text-[10px] font-bold text-foreground flex items-center justify-center p-2 bg-muted/10 rounded-md">{region}</div>
+                            {heatmapData.filter(d => d.region === region).map((cell, i) => {
+                                const intensity = cell.value > 60 ? 'bg-blue-900 text-white' : cell.value > 30 ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-900';
+                                return (
+                                    <div
+                                        key={i}
+                                        className={cn("text-[10px] font-bold flex items-center justify-center p-3 rounded-md transition-all hover:scale-105 cursor-pointer shadow-sm relative group", intensity)}
+                                        onClick={() => exportToCSV(LINKS_DATA.filter(l => l.region === region), `Heatmap_${region}_${cell.hour.replace(':', '')}_Detail`)}
+                                    >
+                                        {cell.value}%
+                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-full mb-1 bg-black text-white text-[9px] px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none">
+                                            {region} @ {cell.hour} <br /> (Click to Export)
                                         </div>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                        <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden">
-                                            <div
-                                                className={cn("h-full", row.loopback_snmp > 90 ? "bg-emerald-500" : row.loopback_snmp > 50 ? "bg-yellow-500" : "bg-red-500")}
-                                                style={{ width: `${row.loopback_snmp}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-[9px] opacity-70">{row.loopback_snmp}%</span>
-                                    </td>
-                                    <td className="p-3 text-center font-mono">{row.cpu}%</td>
-                                    <td className="p-3 text-center font-mono">{row.mem}%</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    ))}
                 </div>
             </div>
         </div>

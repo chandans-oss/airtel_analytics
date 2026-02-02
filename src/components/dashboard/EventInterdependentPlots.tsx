@@ -3,9 +3,10 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
     PieChart, Pie, Legend
 } from 'recharts';
-import { Download, Filter, RefreshCw, X } from 'lucide-react';
+import { Download, Filter, RefreshCw, X, Maximize2 } from 'lucide-react';
 import { exportToCSV } from '@/utils/exportUtils';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // --- Types (Enriched based on Reference) ---
 interface EventRecord {
@@ -101,6 +102,7 @@ const PIE_COLORS = [COLORS.primary, COLORS.secondary, COLORS.success, COLORS.war
 
 export function EventInterdependentPlots() {
     const [filters, setFilters] = useState<Partial<EventRecord>>({});
+    const [expandedChartField, setExpandedChartField] = useState<string | null>(null);
 
     // --- Filter Logic ---
     const filteredData = useMemo(() => {
@@ -139,7 +141,7 @@ export function EventInterdependentPlots() {
 
     // --- Derived Datasets ---
     const rootCauseData = aggregate('rootCause');
-    const subReasonData = aggregate('subReason');
+
     const deviceTypeData = aggregate('deviceType');
     const makeData = aggregate('vendor');
     const regionData = aggregate('region');
@@ -223,112 +225,148 @@ export function EventInterdependentPlots() {
     };
 
     // --- Chart Components ---
-    const ChartCard = ({ title, data, field, type = 'bar', color = COLORS.primary, width = '100%', yAxisWidth = 100 }: any) => (
-        <div className={cn(
-            "rounded-xl border border-border/50 bg-card p-4 shadow-sm flex flex-col transition-all duration-300",
-            Object.keys(filters).includes(field) ? "ring-2 ring-primary/50 bg-primary/5" : "hover:border-primary/30"
-        )}>
-            <div className="flex items-center justify-between mb-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate pr-2" title={title}>{title}</h4>
-                <div className="flex gap-1 shrink-0">
-                    {filters[field as keyof EventRecord] && (
-                        <button onClick={(e) => { e.stopPropagation(); handleInteraction(field, filters[field]!); }} className="p-1 hover:bg-destructive/10 text-destructive rounded transform hover:scale-110 transition-all">
-                            <X size={10} />
+    const ChartCard = ({ title, data, field, type = 'bar', color = COLORS.primary, width = '100%', yAxisWidth = 100, limit }: any) => {
+        const isTruncated = limit && data.length > limit;
+        const displayData = isTruncated ? data.slice(0, limit) : data;
+
+        return (
+            <div className={cn(
+                "rounded-xl border border-border/50 bg-card p-4 shadow-sm flex flex-col transition-all duration-300",
+                Object.keys(filters).includes(field) ? "ring-2 ring-primary/50 bg-primary/5" : "hover:border-primary/30"
+            )}>
+                <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate pr-2" title={title}>{title}</h4>
+                    <div className="flex gap-1 shrink-0">
+                        {filters[field as keyof EventRecord] && (
+                            <button onClick={(e) => { e.stopPropagation(); handleInteraction(field, filters[field]!); }} className="p-1 hover:bg-destructive/10 text-destructive rounded transform hover:scale-110 transition-all">
+                                <X size={10} />
+                            </button>
+                        )}
+                        {/* Expand Button */}
+                        {isTruncated && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setExpandedChartField(field); }}
+                                className="p-1 hover:bg-muted text-muted-foreground rounded transform hover:scale-110 transition-all"
+                                title="Maximize Chart"
+                            >
+                                <Maximize2 size={10} />
+                            </button>
+                        )}
+                        {/* Main Export for All Data in Chart */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); exportToCSV(data, `Event_Analysis_${field}_Summary`); }}
+                            className="p-1 hover:bg-muted text-muted-foreground rounded transform hover:scale-110 transition-all"
+                            title="Download Summary"
+                        >
+                            <Download size={10} />
                         </button>
-                    )}
-                    {/* Main Export for All Data in Chart */}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); exportToCSV(data, `Event_Analysis_${field}_Summary`); }}
-                        className="p-1 hover:bg-muted text-muted-foreground rounded transform hover:scale-110 transition-all"
-                        title="Download Summary"
-                    >
-                        <Download size={10} />
-                    </button>
+                    </div>
                 </div>
-            </div>
-            {/* Chart Area */}
-            <div className={cn("w-full transition-all", type === 'pie' ? "h-[160px]" : "h-[250px]")}>
-                <ResponsiveContainer width={width} height="100%">
-                    {type === 'pie' ? (
-                        <PieChart>
-                            <Pie
-                                data={data}
-                                innerRadius={50} // Slightly reduced to fit better
-                                outerRadius={70}
-                                paddingAngle={2}
-                                dataKey="value"
-                                cursor="pointer"
-                                onClick={(entry: any) => handleInteraction(field, entry.name || entry.payload?.name)}
-                            >
-                                {data.map((entry: any, index: number) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={filters[field] === entry.name ? '#000' : PIE_COLORS[index % PIE_COLORS.length]}
-                                        opacity={filters[field] && filters[field] !== entry.name ? 0.3 : 1}
-                                        stroke={filters[field] === entry.name ? COLORS.primary : 'none'}
-                                        strokeWidth={2}
-                                    />
-                                ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                        </PieChart>
-                    ) : (
-                        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 45, left: 0, bottom: 5 }} barCategoryGap={20}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" opacity={0.5} />
-                            <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 9 }} />
-                            <YAxis
-                                dataKey="name"
-                                type="category"
-                                width={yAxisWidth}
-                                tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
-                                axisLine={false}
-                                tickLine={false}
-                                interval={0}
-                            />
-                            <Tooltip
-                                cursor={{ fill: 'transparent' }}
-                                contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Bar
-                                dataKey="value"
-                                barSize={24}
-                                radius={[0, 4, 4, 0]}
-                                onClick={(entry: any) => handleInteraction(field, entry.name || entry.payload?.name)}
-                                cursor="pointer"
-                                label={(props) => <CustomBarLabel {...props} field={field} />}
-                            >
-                                {data.map((entry: any, index: number) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={Object.keys(filters).includes(field) && filters[field] !== entry.name ? '#e2e8f0' : color}
-                                        fillOpacity={1}
-                                    />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    )}
-                </ResponsiveContainer>
-            </div>
-
-            {/* Custom Pie Legend */}
-            {type === 'pie' && (
-                <CustomPieLegend data={data} field={field} />
-            )}
-
-            {/* Footer Total */}
-            {type !== 'pie' && (
-                <div className="mt-3 flex justify-between items-center text-[9px] text-muted-foreground font-medium border-t border-border/30 pt-2">
-                    <span>TOTAL: {data.reduce((a: number, b: any) => a + b.value, 0)}</span>
-                    <span className="text-primary/70 uppercase">{filters[field] ? 'Filtered' : 'All Events'}</span>
+                {/* Chart Area */}
+                <div className={cn("w-full transition-all", type === 'pie' ? "h-[160px]" : "h-[250px]")}>
+                    <ResponsiveContainer width={width} height="100%">
+                        {type === 'pie' ? (
+                            <PieChart>
+                                <Pie
+                                    data={displayData}
+                                    innerRadius={50} // Slightly reduced to fit better
+                                    outerRadius={70}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                    cursor="pointer"
+                                    onClick={(entry: any) => handleInteraction(field, entry.name || entry.payload?.name)}
+                                >
+                                    {displayData.map((entry: any, index: number) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={filters[field] === entry.name ? '#000' : PIE_COLORS[index % PIE_COLORS.length]}
+                                            opacity={filters[field] && filters[field] !== entry.name ? 0.3 : 1}
+                                            stroke={filters[field] === entry.name ? COLORS.primary : 'none'}
+                                            strokeWidth={2}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                            </PieChart>
+                        ) : (
+                            <BarChart data={displayData} layout="vertical" margin={{ top: 5, right: 45, left: 0, bottom: 5 }} barCategoryGap={20}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" opacity={0.5} />
+                                <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 9 }} />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    width={yAxisWidth}
+                                    tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    interval={0}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Bar
+                                    dataKey="value"
+                                    barSize={24}
+                                    radius={[0, 4, 4, 0]}
+                                    onClick={(entry: any) => handleInteraction(field, entry.name || entry.payload?.name)}
+                                    cursor="pointer"
+                                    label={(props) => <CustomBarLabel {...props} field={field} />}
+                                >
+                                    {displayData.map((entry: any, index: number) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={Object.keys(filters).includes(field) && filters[field] !== entry.name ? '#e2e8f0' : color}
+                                            fillOpacity={1}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        )}
+                    </ResponsiveContainer>
                 </div>
-            )}
-        </div>
-    );
+
+                {/* Custom Pie Legend */}
+                {type === 'pie' && (
+                    <CustomPieLegend data={displayData} field={field} />
+                )}
+
+                {/* Footer Total */}
+                {type !== 'pie' && (
+                    <div className="mt-3 flex justify-between items-center text-[9px] text-muted-foreground font-medium border-t border-border/30 pt-2">
+                        <div className="flex items-center gap-2">
+                            <span>TOTAL: {data.reduce((a: number, b: any) => a + b.value, 0)}</span>
+                            {isTruncated && (
+                                <span className="text-primary cursor-pointer hover:underline" onClick={(e) => { e.stopPropagation(); setExpandedChartField(field); }}>
+                                    (Top {limit} shown)
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-primary/70 uppercase">{filters[field] ? 'Filtered' : 'All Events'}</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // Debug Mount
     React.useEffect(() => {
-        console.log("EventInterdependentPlots v3 (Custom Labels) Mounted");
+        console.log("EventInterdependentPlots v4 (Modal Supported) Mounted");
     }, []);
+
+    // Get Data and Logic for Expanded View
+    const getExpandedChartData = () => {
+        if (!expandedChartField) return null;
+        switch (expandedChartField) {
+            case 'rootCause': return { data: rootCauseData, title: 'Down Count vs Issues', color: COLORS.primary };
+
+            case 'deviceType': return { data: deviceTypeData, title: 'Device Type', color: COLORS.success, type: 'pie' };
+            case 'vendor': return { data: makeData, title: 'Vendor / Make', color: COLORS.warning };
+            case 'region': return { data: regionData, title: 'Region', color: COLORS.slate };
+            default: return null;
+        }
+    };
+    const expandedData = getExpandedChartData();
 
     return (
         <div className="space-y-4">
@@ -362,14 +400,7 @@ export function EventInterdependentPlots() {
                     yAxisWidth={110}
                 />
 
-                {/* 2. Specific Failure Mode */}
-                <ChartCard
-                    title="Specific Failure Mode"
-                    data={subReasonData}
-                    field="subReason"
-                    color={COLORS.secondary}
-                    yAxisWidth={140}
-                />
+
 
                 {/* 3. Device Type */}
                 <ChartCard
@@ -403,6 +434,77 @@ export function EventInterdependentPlots() {
             <div className="text-[10px] text-muted-foreground text-right italic px-1">
                 * Click on charts to filter. Click the download icon next to bars to export specific data.
             </div>
+
+            {/* Expanded Chart Modal */}
+            <Dialog open={!!expandedChartField} onOpenChange={(o) => !o && setExpandedChartField(null)}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{expandedData?.title || 'Chart Details'}</DialogTitle>
+                    </DialogHeader>
+                    {expandedData && (
+                        <div className="h-[500px] w-full mt-4">
+                            {expandedData.type === 'pie' ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={expandedData.data}
+                                            innerRadius={80}
+                                            outerRadius={120}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            cursor="pointer"
+                                            onClick={(entry: any) => {
+                                                handleInteraction(expandedChartField!, entry.name);
+                                                setExpandedChartField(null); // Close on selection to show filtered state
+                                            }}
+                                            label
+                                        >
+                                            {expandedData.data.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={expandedData.data}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                        barCategoryGap={10}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke="#E5E7EB" opacity={0.5} />
+                                        <XAxis type="number" />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={180}
+                                            tick={{ fontSize: 11, fontWeight: 600 }}
+                                        />
+                                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
+                                        <Bar
+                                            dataKey="value"
+                                            barSize={30}
+                                            radius={[0, 4, 4, 0]}
+                                            onClick={(entry: any) => {
+                                                handleInteraction(expandedChartField!, entry.name);
+                                                setExpandedChartField(null);
+                                            }}
+                                            cursor="pointer"
+                                        >
+                                            {expandedData.data.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={expandedData.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

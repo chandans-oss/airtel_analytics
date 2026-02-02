@@ -3,9 +3,10 @@ import { useInventoryStore } from '@/store/inventoryStore';
 
 import { SuppressionLogicTable } from './SuppressionLogicTable';
 import { EventInterdependentPlots } from './EventInterdependentPlots';
+
+import { EventHeatmapWidget } from './EventHeatmapWidget';
 import {
     Clock,
-    Search,
     Filter,
     Download,
     ChevronLeft,
@@ -32,12 +33,12 @@ import { exportToCSV } from '@/utils/exportUtils';
 // --- MOCK DATA ---
 
 const LINK_DOWN_ISSUES = [
-    { label: 'Reachability Issue', sub: '(Ping/SNMP failure)', value: 200, color: 'text-red-500', border: 'border-red-500/50', bg: 'bg-red-500/10' },
-    { label: 'Device Unreachable', sub: '(CPE/router down, power...)', value: 90, color: 'text-orange-500', border: 'border-orange-500/50', bg: 'bg-orange-500/10' },
-    { label: 'Interface Operational Down', sub: '(Port down, admin down...)', value: 50, color: 'text-yellow-500', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
-    { label: 'Routing / Protocol Failure', sub: '(BGP peer down...)', value: 40, color: 'text-blue-500', border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
-    { label: 'Provider End Unreachable', sub: '(Provider PE / gateway...)', value: 70, color: 'text-purple-500', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
-    { label: 'Physical / Last-Mile Failure', sub: '(Fiber cut, provider outage...)', value: 55, color: 'text-pink-500', border: 'border-pink-500/50', bg: 'bg-pink-500/10' },
+    { label: 'Reachability Issue', sub: '(Ping/SNMP failure)', value: 200, network: 140, app: 60, color: 'text-red-500', border: 'border-red-500/50', bg: 'bg-red-500/10' },
+    { label: 'Device Unreachable', sub: '(CPE/router down, power...)', value: 90, network: 80, app: 10, color: 'text-orange-500', border: 'border-orange-500/50', bg: 'bg-orange-500/10' },
+    { label: 'Interface Operational Down', sub: '(Port down, admin down...)', value: 50, network: 45, app: 5, color: 'text-yellow-500', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
+    { label: 'Routing / Protocol Failure', sub: '(BGP peer down...)', value: 40, network: 35, app: 5, color: 'text-blue-500', border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
+    { label: 'Provider End Unreachable', sub: '(Provider PE / gateway...)', value: 70, network: 70, app: 0, color: 'text-purple-500', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
+    { label: 'Physical / Last-Mile Failure', sub: '(Fiber cut, provider outage...)', value: 55, network: 55, app: 0, color: 'text-pink-500', border: 'border-pink-500/50', bg: 'bg-pink-500/10' },
 ];
 
 const IMPACT_DATA = [
@@ -100,121 +101,71 @@ const CUSTOMER_DATA = [
     { name: 'Paayas Milk Producer', value: 65, color: '#3b82f6' },
 ];
 
-const TABLE_DATA = [
-    { event: 'Link Down', customer: 'DABUR INDIA LIMITED', device: 'AirtelVPN-MS01', cause: 'Reachability Issue', users: 197, status: 'Critical', severity: 5, time: '2 mins ago' },
-    { event: 'Utilization 95%', customer: 'Dept of Income Tax', device: 'Router AU76', cause: 'High Bandwidth Utilization', users: 122, status: 'Warning', severity: 3, time: '15 mins ago' },
-    { event: 'SNMP Failed', customer: 'Hatsun Agro Products', device: 'CE CH69', cause: 'RASP FlashCNCTokens', users: 14, status: 'Warning', severity: 3, time: '22 mins ago' },
-    { event: 'BGP Peer Down', customer: 'KPMG', device: 'Router AU78', cause: 'Peer Connection Lost', users: 56, status: 'Critical', severity: 4, time: '35 mins ago' },
-    { event: 'High Latency', customer: 'Paayas Milk Producer', device: 'AirtelVPN-MS02', cause: 'Network Congestion', users: 89, status: 'Info', severity: 1, time: '1 hr ago' },
-    { event: 'Device Reboot', customer: 'DABUR INDIA LIMITED', device: 'Router FL12', cause: 'Scheduled Maintenance', users: 34, status: 'Resolved', severity: 0, time: '2 hrs ago' },
-];
 
-// Grid Heatmap Mock
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HEATMAP_DATA = DAYS.map(day => ({
-    day,
-    hours: HOURS.map(h => ({
-        hour: h,
-        value: Math.random() > 0.7 ? Math.floor(Math.random() * 10) : 0 // Sparse data
-    }))
-}));
+
+
 
 
 export function EventsDashboard() {
-    const [heatmapFilter, setHeatmapFilter] = useState<'All' | 'Before BH' | 'During BH' | 'After BH'>('All');
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
     const [impactView, setImpactView] = useState<'overview' | 'correlation' | 'performance'>('overview');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All Status'); // Kept for local table filter if needed, or synced
+    const [layerFilter, setLayerFilter] = useState({ network: true, application: true });
 
     // Global Event Filters from Store
     const { eventSeverities, eventType, showSuppressed } = useInventoryStore();
-
-    // Filtered Table Data
-    const filteredTableData = useMemo(() => {
-        return TABLE_DATA.filter(row => {
-            // 1. Search Query
-            const matchesSearch =
-                row.event.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                row.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                row.cause.toLowerCase().includes(searchQuery.toLowerCase());
-
-            // 2. Sidebar Severity Filter
-            // Map row status/severity to selected severities
-            // If selectedSeverities is empty, show all (or none? usually all if user unchecks everything is rare, but let's assume exact match)
-            // If ALL selected, show all. 
-            const matchesSeverity = eventSeverities.length === 0 || eventSeverities.includes(row.status);
-
-            // 3. Sidebar Event Type Filter
-            const matchesType = eventType === 'All Types' ||
-                (eventType === 'Link Down' && row.event.includes('Link')) ||
-                (eventType === 'BGP Peer Down' && row.event.includes('BGP')) ||
-                (eventType === 'High Utilization' && row.event.includes('Utilization')) ||
-                (eventType === 'Hardware Failure' && (row.event.includes('Reboot') || row.event.includes('Hardware')));
-
-            // 4. Suppression
-            const matchesSuppression = showSuppressed || row.severity > 1;
-
-            return matchesSearch && matchesSeverity && matchesType && matchesSuppression;
-        });
-    }, [searchQuery, statusFilter, eventSeverities, eventType, showSuppressed]);
-
-    // Helper to determine if an hour is in the current filter
-    const isHourActive = (hour: number) => {
-        if (heatmapFilter === 'All') return true;
-        if (heatmapFilter === 'Before BH') return hour < 9;
-        if (heatmapFilter === 'During BH') return hour >= 9 && hour < 18;
-        if (heatmapFilter === 'After BH') return hour >= 18;
-        return false;
-    };
 
     const handleExport = (data: any[], filename: string) => {
         exportToCSV(data, filename);
     };
 
-    const handleHeatmapExport = () => {
-        const flattenedData: any[] = [];
-        HEATMAP_DATA.forEach(d => {
-            d.hours.forEach(h => {
-                if (isHourActive(h.hour)) {
-                    flattenedData.push({
-                        Day: d.day,
-                        Hour: `${h.hour}:00`,
-                        Events: h.value,
-                        Category: heatmapFilter
-                    });
-                }
-            });
-        });
-        handleExport(flattenedData, `Heatmap_Distribution_${heatmapFilter}`);
-    };
+    // Helper to generate mock export data based on category and active filters
+    const handleCardExport = (item: typeof LINK_DOWN_ISSUES[0]) => {
+        const rows = [];
 
-    // Helper to generate mock events for a specific heatmap slot export
-    const handleHeatmapCellClick = (day: string, hour: number, count: number) => {
-        if (count === 0) return;
-
-        console.log(`Exporting ${count} events for ${day} ${hour}:00`);
-
-        const mockEvents = [];
-        const severities = ['Critical', 'Major', 'Minor', 'Warning'];
-        const issues = ['Link Down', 'BGP Peer Down', 'Interface Flapping', 'High CPU', 'SNMP Failure'];
-
-        for (let i = 0; i < count; i++) {
-            mockEvents.push({
-                EventID: `EVT-${Math.floor(Math.random() * 100000)}`,
-                Date: `Next ${day} ${hour}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`,
-                Node: `Router-${Math.floor(Math.random() * 999)}`,
-                IP_Address: `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-                Severity: severities[Math.floor(Math.random() * severities.length)],
-                Issue_Type: issues[Math.floor(Math.random() * issues.length)],
-                Customer: CUSTOMER_DATA[Math.floor(Math.random() * CUSTOMER_DATA.length)].name,
-                Status: 'Open'
-            });
+        // 1. Generate Network Logs if Filter is ON
+        if (layerFilter.network) {
+            for (let i = 0; i < item.network; i++) {
+                rows.push({
+                    EventID: `EVT-NET-${1000 + i}`,
+                    Timestamp: new Date(Date.now() - Math.floor(Math.random() * 86400000)).toISOString(),
+                    Category: item.label,
+                    SubCategory: item.sub,
+                    Layer: 'Network',
+                    Device: `Router-Core-${Math.floor(Math.random() * 50)}`,
+                    Status: 'Active',
+                    Severity: 'Critical'
+                });
+            }
         }
 
-        exportToCSV(mockEvents, `Events_${day}_${hour}00_${count}_Records`);
+        // 2. Generate Application Logs if Filter is ON
+        if (layerFilter.application) {
+            for (let i = 0; i < item.app; i++) {
+                rows.push({
+                    EventID: `EVT-APP-${5000 + i}`,
+                    Timestamp: new Date(Date.now() - Math.floor(Math.random() * 86400000)).toISOString(),
+                    Category: item.label,
+                    SubCategory: item.sub,
+                    Layer: 'Application',
+                    AppService: `Service-${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`,
+                    Status: 'Warning',
+                    Severity: 'Major'
+                });
+            }
+        }
+
+        exportToCSV(rows, `${item.label.replace(/\s+/g, '_')}_Detailed_Report`);
     };
+
+    // Calculate Dynamic Grid Data based on Toggles
+    const dynamicLinkDownIssues = useMemo(() => {
+        return LINK_DOWN_ISSUES.map(item => {
+            let val = 0;
+            if (layerFilter.network) val += item.network;
+            if (layerFilter.application) val += item.app;
+            return { ...item, value: val };
+        });
+    }, [layerFilter]);
 
     return (
         <div className="flex flex-col h-full bg-background animate-in fade-in duration-500">
@@ -234,6 +185,28 @@ export function EventsDashboard() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">
+                    {/* Layer Toggles */}
+                    <div className="flex items-center bg-muted/20 rounded-lg p-1 border border-border/50">
+                        <button
+                            onClick={() => setLayerFilter(prev => ({ ...prev, network: !prev.network }))}
+                            className={cn(
+                                "px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1.5",
+                                layerFilter.network ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Server size={10} /> Network
+                        </button>
+                        <button
+                            onClick={() => setLayerFilter(prev => ({ ...prev, application: !prev.application }))}
+                            className={cn(
+                                "px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1.5",
+                                layerFilter.application ? "bg-purple-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Activity size={10} /> Application
+                        </button>
+                    </div>
+
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-md border border-border/50">
                         <Clock size={14} className="text-muted-foreground" />
                         <span className="text-xs font-medium">Last 24 Hours</span>
@@ -298,13 +271,31 @@ export function EventsDashboard() {
                                 <Server size={14} className="text-primary" />
                                 Link Down Issues Breakdown
                             </h3>
-                            <button onClick={() => handleExport(LINK_DOWN_ISSUES, 'Link_Down_Issues')} className="p-1 rounded-md hover:bg-muted text-muted-foreground transition-all" title="Export CSV">
-                                <Download size={12} />
-                            </button>
+                            <div className="text-[10px] text-muted-foreground italic mr-2 border-l border-border pl-2">
+                                Click cloud icon on cards to export filtered details
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                            {LINK_DOWN_ISSUES.map((item, idx) => (
-                                <div key={idx} className={cn("p-2 rounded-lg border flex flex-col items-center justify-center text-center transition-all hover:scale-102 cursor-default min-h-[80px]", item.border, item.bg)}>
+                            {dynamicLinkDownIssues.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className={cn(
+                                        "p-2 rounded-lg border flex flex-col items-center justify-center text-center transition-all hover:scale-102 cursor-default min-h-[80px] relative group",
+                                        item.border,
+                                        item.bg
+                                    )}
+                                >
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCardExport(item);
+                                        }}
+                                        className="absolute top-1 right-1 p-1 rounded-full bg-background/50 hover:bg-background text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                                        title={`Export ${item.label} Data`}
+                                    >
+                                        <Download size={10} />
+                                    </button>
+
                                     <p className={cn("text-xl font-black", item.color)}>{item.value}</p>
                                     <p className="text-[10px] font-bold text-foreground leading-tight px-1">{item.label}</p>
                                     <p className="text-[9px] text-muted-foreground opacity-80">{item.sub}</p>
@@ -318,100 +309,16 @@ export function EventsDashboard() {
 
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Heatmap */}
-                        <div className="col-span-12 lg:col-span-7 rounded-xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:border-primary/20">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Clock size={16} className="text-primary" />
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Event Distribution by Business Hours</h3>
-                                </div>
-                                <div className="flex bg-muted/30 rounded-lg p-1 gap-1">
-                                    {(['All', 'Before BH', 'During BH', 'After BH'] as const).map((filter) => (
-                                        <button
-                                            key={filter}
-                                            onClick={() => setHeatmapFilter(filter)}
-                                            className={cn(
-                                                "px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                                                heatmapFilter === filter
-                                                    ? "bg-primary text-primary-foreground shadow-sm"
-                                                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                                            )}
-                                        >
-                                            {filter}
-                                        </button>
-                                    ))}
-                                </div>
-                                <button onClick={handleHeatmapExport} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all ml-2" title="Export CSV">
-                                    <Download size={14} />
-                                </button>
-                            </div>
-                            <div className="w-full overflow-x-auto pb-2">
-                                <div className="min-w-[500px] flex flex-col gap-1.5">
-                                    {HEATMAP_DATA.map(d => (
-                                        <div key={d.day} className="flex items-center gap-1.5 group">
-                                            <span className="w-8 text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">{d.day}</span>
-                                            {d.hours.map(h => {
-                                                const active = isHourActive(h.hour);
-                                                return (
-                                                    <div
-                                                        key={h.hour}
-                                                        onClick={() => handleHeatmapCellClick(d.day, h.hour, h.value)}
-                                                        className={cn(
-                                                            "h-7 flex-1 rounded-[2px] transition-all duration-300 relative group/cell cursor-pointer",
-                                                            active ? "opacity-100 hover:scale-[1.15] hover:z-10 hover:shadow-lg hover:ring-1 hover:ring-foreground/20" : "opacity-10 grayscale",
-                                                            h.value === 0 ? "bg-muted/20" :
-                                                                h.value < 4 ? "bg-amber-500/40 hover:bg-amber-500" :
-                                                                    h.value < 7 ? "bg-orange-500/60 hover:bg-orange-500" : "bg-red-500/80 hover:bg-red-500"
-                                                        )}
-                                                    >
-                                                        {/* Tooltip */}
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/cell:flex flex-col items-center bg-popover text-popover-foreground text-[10px] px-2 py-1 rounded shadow-xl border border-border whitespace-nowrap z-20 pointer-events-none">
-                                                            <span className="font-bold">{d.day} {h.hour}:00</span>
-                                                            <span>{h.value} Events</span>
-                                                            <div className="w-2 h-2 bg-popover rotate-45 border-r border-b border-border absolute -bottom-1"></div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ))}
-                                    <div className="flex items-center gap-1.5 mt-2 border-t border-border/30 pt-2">
-                                        <span className="w-8"></span>
-                                        {HOURS.map(h => (
-                                            <span key={h} className={cn(
-                                                "flex-1 text-[8px] text-muted-foreground text-center transition-opacity duration-300",
-                                                isHourActive(h) ? "opacity-100" : "opacity-30"
-                                            )}>
-                                                {h % 2 === 0 ? `${h}` : ''}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Event Distribution Widget (Full Width) */}
 
-                            {/* Heatmap Legend */}
-                            <div className="flex items-center justify-end gap-4 mt-3">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-[2px] bg-muted/20 border border-border/20"></div>
-                                    <span className="text-[10px] text-muted-foreground font-medium">No Activity</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-[2px] bg-amber-500/40 border border-amber-500/20"></div>
-                                    <span className="text-[10px] text-muted-foreground font-medium">Low (1-3)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-[2px] bg-orange-500/60 border border-orange-500/20"></div>
-                                    <span className="text-[10px] text-muted-foreground font-medium">Medium (4-6)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-[2px] bg-red-500/80 border border-red-500/20"></div>
-                                    <span className="text-[10px] text-muted-foreground font-medium">High (7+)</span>
-                                </div>
-                            </div>
+
+                        {/* Event Heatmap Widget (Also Full Width - User Requested "Assume as a widget") */}
+                        <div className="col-span-12 h-[500px]">
+                            <EventHeatmapWidget />
                         </div>
 
                         {/* Lifecycle Flow - Corporate Redesign V2 */}
-                        <div className="col-span-12 lg:col-span-5 rounded-xl border border-border/50 bg-card/50 shadow-sm flex flex-col h-full overflow-hidden">
+                        <div className="col-span-12 rounded-xl border border-border/50 bg-card/50 shadow-sm flex flex-col h-full overflow-hidden">
                             {/* Header */}
                             <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between bg-card">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -827,129 +734,9 @@ export function EventsDashboard() {
                     </div>
 
                     {/* Operational Table - Enhanced Design */}
-                    <div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
-                        {/* Top Header */}
-                        <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Operational Detail & Probable Cause</h3>
-                            <div className="flex gap-2">
-                                <button className="px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-bold uppercase hover:bg-muted text-foreground transition-colors">
-                                    Export IOSU
-                                </button>
-                                <button onClick={() => handleExport(filteredTableData, 'Operational_Detail_Logs')} className="px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-bold uppercase hover:bg-muted text-foreground transition-colors flex items-center gap-2">
-                                    <Download size={12} />
-                                    Export CSV
-                                </button>
-                                <button className="px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-bold uppercase hover:bg-muted text-foreground transition-colors">
-                                    Export PDF
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* Toolbar */}
-                        <div className="p-4 bg-muted/5 border-b border-border/50 flex flex-col sm:flex-row items-center gap-4">
-                            <div className="relative flex-1 w-full max-w-md">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-                                <input
-                                    type="text"
-                                    placeholder="Search events, customers, causes..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
-                            <div className="flex items-center gap-4 w-full sm:w-auto">
-                                <div className="relative">
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={12} />
-                                    <select
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value)}
-                                        className="appearance-none bg-background border border-border rounded-lg pl-9 pr-8 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-32 font-medium"
-                                    >
-                                        <option>All Status</option>
-                                        <option>Critical</option>
-                                        <option>Warning</option>
-                                        <option>Resolved</option>
-                                        <option>Info</option>
-                                    </select>
-                                </div>
-                                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
-                                    {filteredTableData.length} of {TABLE_DATA.length} events
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-muted/10 font-bold text-muted-foreground border-b border-border/50">
-                                    <tr>
-                                        <th className="px-6 py-4">Event</th>
-                                        <th className="px-6 py-4">Impacted Customer</th>
-                                        <th className="px-6 py-4">Link / Router</th>
-                                        <th className="px-6 py-4">Probable Cause</th>
-                                        <th className="px-6 py-4 text-center">Impacted Users</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4 text-center">Severity</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/30">
-                                    {filteredTableData.map((row, i) => (
-                                        <tr key={i} className="hover:bg-muted/30 transition-colors group">
-                                            <td className="px-6 py-4 font-bold flex items-center gap-3">
-                                                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]",
-                                                    row.severity >= 5 ? "text-red-500 bg-red-500" :
-                                                        row.severity >= 3 ? "text-amber-500 bg-amber-500" :
-                                                            row.status === 'Resolved' ? "text-emerald-500 bg-emerald-500" : "text-sky-500 bg-sky-500")}
-                                                />
-                                                <span className="group-hover:text-primary transition-colors">{row.event}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-muted-foreground font-medium">{row.customer}</td>
-                                            <td className="px-6 py-4 font-mono text-primary/80">{row.device}</td>
-                                            <td className="px-6 py-4 text-foreground/90">{row.cause}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-destructive">{row.users}</td>
-                                            <td className="px-6 py-4">
-                                                <div className={cn(
-                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] uppercase font-bold border shadow-sm",
-                                                    row.status === 'Critical' ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                                                        row.status === 'Warning' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                                                            row.status === 'Resolved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                                                "bg-sky-500/10 text-sky-500 border-sky-500/20"
-                                                )}>
-                                                    {row.status === 'Critical' && <AlertOctagon size={10} />}
-                                                    {row.status === 'Warning' && <AlertCircle size={10} />}
-                                                    {row.status === 'Resolved' && <Zap size={10} />}
-                                                    {row.status === 'Info' && <Activity size={10} />}
-                                                    {row.status}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex justify-center gap-1">
-                                                    {[...Array(5)].map((_, idx) => (
-                                                        <div key={idx} className={cn("w-2 h-2 rounded-full", idx < row.severity ? "bg-red-500" : "bg-muted/30")} />
-                                                    ))}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Footer Legend */}
-                        <div className="p-4 border-t border-border/50 bg-muted/5 flex flex-wrap items-center gap-6 text-[10px] text-muted-foreground font-medium">
-                            <span>Suppression Reason:</span>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div>Wrong</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div>Flapped 5K+</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500"></div>Okits to</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500"></div>Timon Towncast</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-400"></div>Duplicate Alert</div>
-                        </div>
-                    </div>
-
-                    {/* Suppression Logic Reference Matrix */}
-                    <SuppressionLogicTable />
                 </main>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

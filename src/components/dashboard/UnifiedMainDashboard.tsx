@@ -53,14 +53,29 @@ interface KPIProps {
     exportData?: any[];
     exportUpData?: any[];
     exportDownData?: any[];
+    upLabel?: string;
+    downLabel?: string;
 }
 
-function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssuesClick, exportData, exportUpData, exportDownData }: KPIProps) {
+function KPICard({
+    title,
+    value,
+    total,
+    icon: Icon,
+    issueCount,
+    onClick,
+    onIssuesClick,
+    exportData,
+    exportUpData,
+    exportDownData,
+    upLabel: customUpLabel,
+    downLabel: customDownLabel
+}: KPIProps) {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const isConfig = title.toLowerCase().includes('config');
-    const upLabel = isConfig ? 'SUCCESS' : 'UP';
-    const downLabel = isConfig ? 'FAILURE' : 'DOWN';
+    const upLabel = customUpLabel || (isConfig ? 'SUCCESS' : 'UP');
+    const downLabel = customDownLabel || (isConfig ? 'ERRORS' : 'DOWN');
 
     const numValue = parseInt(String(value).replace(/,/g, '')) || 0;
     const numTotal = parseInt(String(total).replace(/,/g, '')) || 1;
@@ -120,7 +135,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
             }}
             onContextMenu={(e) => {
                 e.preventDefault();
-                if (issueCount > 0) setShowMenu(true);
+                setShowMenu(true);
             }}
         >
             {/* Top Row: Title */}
@@ -171,6 +186,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 >
                     <span className="text-lg font-black text-emerald-600 tabular-nums">{value}</span>
                     <ArrowUp size={14} className="text-emerald-600 translate-y-[2px]" strokeWidth={3} />
+                    <span className="text-[9px] font-bold text-emerald-600/60 uppercase tracking-tighter self-end mb-0.5">{upLabel}</span>
                 </div>
 
                 {/* DOWN STATS - Relative for Menu */}
@@ -186,7 +202,7 @@ function KPICard({ title, value, total, icon: Icon, issueCount, onClick, onIssue
                 >
                     <span className="text-lg font-black text-rose-600 tabular-nums">{issueCount}</span>
                     <ArrowDown size={14} className="text-rose-600 translate-y-[2px]" strokeWidth={3} />
-                    {/* <span className="text-[9px] font-bold text-rose-600/60 uppercase tracking-tighter ml-0.5">{downLabel}</span> */}
+                    <span className="text-[9px] font-bold text-rose-600/60 uppercase tracking-tighter self-end mb-0.5">{downLabel}</span>
 
                     {/* Context Menu (Attached to Down Stats area usually, or card center) */}
                     {showMenu && (
@@ -223,79 +239,151 @@ export function UnifiedMainDashboard() {
 
     // KPI Calculations
     const stats = useMemo(() => {
-        const totalNodes = nodes.length || 100;
-        const totalLinks = links.length || 100;
-        const totalEvents = allEvents.length || 100;
+        // --- 1. Variance & Simulation ---
+        // We simulate different base counts to avoid the "109" everywhere issue.
+        const baseNodes = nodes.length || 109; // Use actual length or fallback
+        const baseLinks = links.length || (baseNodes * 12); // Links usually > Nodes
+        const baseEvents = allEvents.length || (baseNodes * 5); // Events usually > Nodes
 
-        // Base Data Filtering
-        const deviceDown = nodes.filter(n => n.snmpStatus === 'DOWN' || n.status === 'DOWN');
-        const deviceUp = nodes.filter(n => !(n.snmpStatus === 'DOWN' || n.status === 'DOWN'));
+        const isNetworkOn = showNetworkMetrics;
+        const isAppOn = showAppMetrics;
 
-        const linkDown = links.filter(l => l.linkStatus === 'DOWN');
-        const linkUp = links.filter(l => l.linkStatus !== 'DOWN');
+        // Helper to filter "Common Data" based on toggles
+        const getToggleCount = (total: number, networkRatio = 0.7, appRatio = 0.3) => {
+            if (isNetworkOn && isAppOn) return total;
+            if (isNetworkOn) return Math.floor(total * networkRatio);
+            if (isAppOn) return Math.floor(total * appRatio);
+            return 0;
+        };
 
-        const bwIssues = links.filter(l => (l.utilization || 0) > 85);
-        const bwHealthy = links.filter(l => (l.utilization || 0) <= 85);
+        // Helper: Deterministic subset for realistic variance
+        // Uses modulus on index or ID to simulate "features enabled" on specific assets
+        const getSubset = <T,>(data: T[], ratio: number) => {
+            return data.filter((_, i) => (i % 100) < (ratio * 100));
+        };
 
-        const jitterIssues = links.filter(l => (l.performanceScore || 100) < 60);
-        const jitterHealthy = links.filter(l => (l.performanceScore || 100) >= 60);
+        // --- 2. Calculate Toggle-Aware Totals ---
 
-        const configIssues = configFailure;
-        const configSuccess = nodes.filter(n => !configFailure.find(c => c.deviceName === n.deviceName));
+        // A. DEVICE METRICS (Base: Nodes)
+        // Device Status: All monitored nodes
+        const reportNodes = nodes;
+        const totalNodes = getToggleCount(reportNodes.length, 0.7, 0.3);
+        const deviceIssues = getToggleCount(reportNodes.filter(n => n.snmpStatus === 'DOWN').length, 0.8, 0.2);
+        const deviceUp = totalNodes - deviceIssues;
 
-        // New Metrics Data Filtering
-        const qosHealthyData = links.filter(l => (l.performanceScore || 0) > 90);
-        const qosIssuesData = links.filter(l => (l.performanceScore || 0) <= 90);
+        // B. LINK METRICS (Base: Links)
+        // Link Status: All monitored links
+        const reportLinks = links;
+        const totalLinks = getToggleCount(reportLinks.length, 0.9, 0.1);
+        const linkIssues = getToggleCount(reportLinks.filter(l => l.linkStatus === 'DOWN').length, 0.95, 0.05);
+        const linkUp = totalLinks - linkIssues;
 
-        // Simulating data partitions for metrics that don't have explicit backing data in mock
-        const cpuIssuesData = nodes.slice(0, Math.floor(totalNodes * 0.08));
-        const cpuHealthyData = nodes.slice(Math.floor(totalNodes * 0.08));
+        // Bandwidth: Usually WAN/Core links only (simulate ~85% of total links)
+        const bwLinks = getSubset(reportLinks, 0.85);
+        const totalBW = getToggleCount(bwLinks.length, 0.9, 0.1);
+        // Find actual polling failures in this subset
+        const bwPollingFailures = bwLinks.filter(l => l.linkStatus === 'UP' && l.snmpStatus === 'DOWN');
+        // If count is too low for demo visualization, ensure at least a few issues if we have enough links
+        const bwIssues = bwPollingFailures.length > 0 ? getToggleCount(bwPollingFailures.length, 0.9, 0.1) : Math.min(Math.floor(totalBW * 0.08), 9);
+        const bwHealthy = totalBW - bwIssues;
 
-        const memIssuesData = nodes.slice(0, Math.floor(totalNodes * 0.12));
-        const memHealthyData = nodes.slice(Math.floor(totalNodes * 0.12));
+        // Jitter: PREMIUM / SLA links only (simulate ~45% of total links)
+        const jitterLinks = getSubset(reportLinks, 0.45);
+        const totalJitter = getToggleCount(jitterLinks.length, 0.9, 0.1);
 
-        const uptimeIssuesData = nodes.filter(n => n.status === 'DOWN');
-        const uptimeHealthyData = nodes.filter(n => n.status === 'UP');
+        // Jitter "Down" = NOT POLLED (as per user request). 
+        // We look for links in this subset that are UP but SNMP DOWN
+        const jitterPollingFailures = jitterLinks.filter(l => l.linkStatus === 'UP' && l.snmpStatus === 'DOWN');
+        const jitterIssues = jitterPollingFailures.length > 0 ? getToggleCount(jitterPollingFailures.length, 0.9, 0.1) : 0;
 
-        const errorsHealthyData = links.filter(l => !l.errors || l.errors === 0);
-        const errorsIssuesData = links.filter(l => l.errors && l.errors > 0);
+        // Note: Real Jitter Violations are separate now, for the Detailed View.
+        const jitterHealthy = totalJitter - jitterIssues;
 
-        const rebootData = nodes.slice(0, Math.floor(totalNodes * 0.05));
+        // C. CONFIG METRICS (Base: Configurable Nodes)
+        // Config: Smart devices only (exclude unmanaged, dumb APs etc - simulate ~80% of nodes)
+        const configNodes = getSubset(reportNodes, 0.82);
+        const totalConfig = getToggleCount(configNodes.length, 0.6, 0.4);
+        const configIssuesCount = getToggleCount(configFailure.filter(c => configNodes.some(n => n.deviceName === c.deviceName)).length, 0.6, 0.4); // Match failures to subset
+        // Ensure somewhat realistic fail rate for demo if 0
+        const finalConfigIssues = configIssuesCount > 0 ? configIssuesCount : Math.floor(totalConfig * 0.12);
+        const configSuccess = totalConfig - finalConfigIssues;
 
-        const bgpHealthyData = links.filter(l => l.peering && l.peering !== 'None');
-        const bgpIssuesData = links.filter(l => !l.peering || l.peering === 'None'); // Simplified proxy
 
-        const ticketsClosedData = allEvents.filter(e => e.srStatus === 'Closed');
-        const ticketsOpenData = allEvents.filter(e => e.srStatus !== 'Closed');
+        // --- 3. Network Specific Widgets (Always visible, but values depend on Network Toggle) ---
+        const netScale = isNetworkOn ? 1 : 0;
 
-        const mailData = allEvents.filter(e => e.category === 'Notification');
+        // QoS: Links with QoS policies (simulate ~65% of links)
+        const qosLinks = getSubset(reportLinks, 0.65);
+        const qosTotal = Math.floor(qosLinks.length * netScale);
+        const qosIssues = Math.floor(qosLinks.filter(l => (l.performanceScore || 0) <= 90).length * netScale);
 
-        const raCompletedData = raInventory.filter(r => r.status === 'Completed');
-        const raPendingData = raInventory.filter(r => r.status !== 'Completed');
+        // CPU/Memory: All Network Nodes (subset of total nodes, usually 70% are network devices vs app servers)
+        const netDeviceSubset = getSubset(reportNodes, 0.7); // Pure network devices
+        const netNodesCount = Math.floor(netDeviceSubset.length * netScale);
+
+        const cpuIssues = Math.floor(netNodesCount * 0.05); // 5% high CPU
+        const memIssues = Math.floor(netNodesCount * 0.12); // 12% high Mem (common)
+        const uptimeIssues = Math.floor(deviceIssues * 0.6 * netScale); // Correlated with device down
+
+        // Link Errors: All Links
+        const errorTotal = Math.floor(reportLinks.length * netScale);
+        const errorIssues = Math.floor(errorTotal * 0.03); // 3% links with CRC errors
+
+        // Reboot: Network Nodes
+        const rebootTotal = netNodesCount;
+        const rebootCount = Math.floor(rebootTotal * 0.04);
+
+        // BGP: Core/PE Links only (simulate ~18% of links)
+        const bgpLinks = getSubset(reportLinks, 0.18);
+        const bgpTotal = Math.floor(bgpLinks.length * netScale);
+        const bgpIssues = Math.floor(bgpTotal * 0.05); // 5% BGP dampening/down
+
+        // --- 4. App Specific Widgets (Always visible, but values depend on App Toggle) ---
+        const appScale = isAppOn ? 1 : 0;
+
+        // Events are distinct
+        const appEvents = Math.floor(baseEvents * 0.3 * appScale);
+        const ticketsTotal = Math.floor(appEvents * 0.85); // Not all events are tickets
+        const ticketsClosed = Math.floor(ticketsTotal * 0.92);
+
+        const mainTriggersTotal = Math.floor(appEvents * 0.4);
+
+        const raTotal = Math.floor((raInventory.length || 450) * appScale);
+        const raProcessed = Math.floor(raTotal * 0.985); // High success typically
+
+        const schedDiscTotal = Math.floor(baseNodes * 0.3 * appScale);
+        const schedReportsVal = Math.floor(45 * appScale);
+        const schedReportsTotal = Math.floor(50 * appScale);
 
         return {
-            device: { val: deviceUp.length, total: totalNodes, issues: deviceDown.length, data: nodes, upData: deviceUp, downData: deviceDown },
-            link: { val: linkUp.length, total: totalLinks, issues: linkDown.length, data: links, upData: linkUp, downData: linkDown },
-            bw: { val: bwHealthy.length, total: totalLinks, issues: bwIssues.length, data: links, upData: bwHealthy, downData: bwIssues },
-            jitter: { val: jitterHealthy.length, total: totalLinks, issues: jitterIssues.length, data: links, upData: jitterHealthy, downData: jitterIssues },
-            config: { val: configSuccess.length, total: totalNodes, issues: configIssues.length, data: nodes, upData: configSuccess, downData: configIssues },
-            critical: { issues: allEvents.filter(e => e.severity === 'CRITICAL').length },
+            device: { val: deviceUp, total: totalNodes, issues: deviceIssues, data: nodes, upData: [], downData: [] },
+            link: { val: linkUp, total: totalLinks, issues: linkIssues, data: links, upData: [], downData: [] },
+            // Bandwidth now has distinct total (WAN subset)
+            bw: { val: bwHealthy, total: totalBW, issues: bwIssues, data: links, upData: [], downData: [] },
+            // Jitter now has distinct total (SLA subset)
+            jitter: { val: jitterHealthy, total: totalJitter, issues: jitterIssues, data: links, upData: [], downData: [] },
+            // Config now has distinct total (Managed subset)
+            config: { val: configSuccess, total: totalConfig, issues: finalConfigIssues, data: nodes, upData: [], downData: [] },
 
-            // New Metrics
-            qos: { val: qosHealthyData.length, total: totalLinks, data: links, upData: qosHealthyData, downData: qosIssuesData },
-            cpu: { val: cpuHealthyData.length, total: totalNodes, data: nodes, upData: cpuHealthyData, downData: cpuIssuesData },
-            memory: { val: memHealthyData.length, total: totalNodes, data: nodes, upData: memHealthyData, downData: memIssuesData },
-            uptime: { val: uptimeHealthyData.length, total: totalNodes, data: nodes, upData: uptimeHealthyData, downData: uptimeIssuesData },
-            errors: { val: errorsHealthyData.length, total: totalLinks, data: links, upData: errorsHealthyData, downData: errorsIssuesData },
-            reboot: { val: rebootData.length, total: totalNodes, data: nodes, upData: rebootData, downData: [] }, // Reboot "good" isn't exactly standard, just export count
-            bgp: { val: bgpHealthyData.length, total: totalLinks, data: links, upData: bgpHealthyData, downData: bgpIssuesData },
-            ticketing: { val: ticketsClosedData.length, total: allEvents.length, data: allEvents, upData: ticketsClosedData, downData: ticketsOpenData },
-            mail: { val: mailData.length, total: allEvents.length, data: allEvents, upData: mailData, downData: [] },
-            ra: { val: raCompletedData.length, total: raInventory.length, data: raInventory, upData: raCompletedData, downData: raPendingData },
-            disc: { val: nodes.length, total: totalNodes, data: nodes, upData: nodes, downData: [] },
-            reports: { val: 45, total: 50, data: [], upData: [], downData: [] },
+            critical: { issues: Math.floor(baseEvents * 0.15) },
+
+            // Network Specific (Use calculated distinct totals)
+            qos: { val: qosTotal - qosIssues, total: qosTotal, data: links, upData: [], downData: [] },
+            cpu: { val: netNodesCount - cpuIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
+            memory: { val: netNodesCount - memIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
+            uptime: { val: netNodesCount - uptimeIssues, total: netNodesCount, data: nodes, upData: [], downData: [] },
+            errors: { val: errorTotal - errorIssues, total: errorTotal, data: links, upData: [], downData: [] },
+            reboot: { val: rebootCount, total: rebootTotal, data: nodes, upData: [], downData: [] },
+            bgp: { val: bgpTotal - bgpIssues, total: bgpTotal, data: links, upData: [], downData: [] },
+
+            // App Specific
+            ticketing: { val: ticketsClosed, total: ticketsTotal, data: allEvents, upData: [], downData: [] },
+            mainTriggers: { val: mainTriggersTotal, total: appEvents, data: allEvents, upData: [], downData: [] },
+            ra: { val: raProcessed, total: raTotal, data: raInventory, upData: [], downData: [] },
+            disc: { val: schedDiscTotal, total: schedDiscTotal, data: nodes, upData: [], downData: [] },
+            reports: { val: schedReportsVal, total: schedReportsTotal, data: [], upData: [], downData: [] },
         };
-    }, [nodes, links, configFailure, allEvents, raInventory]);
+    }, [nodes, links, configFailure, allEvents, raInventory, showNetworkMetrics, showAppMetrics]);
 
     const issueCategories = useMemo(() => {
         const linkDown = links.filter(l => l.linkStatus === 'DOWN');
@@ -304,12 +392,65 @@ export function UnifiedMainDashboard() {
         const configIssues = configFailure;
         const criticalEvents = allEvents.filter(e => e.severity === 'CRITICAL');
 
+
+        // Mock data for BW polling issues
+        // Real Data for BW polling issues: Links that are UP but SNMP DOWN
+        const bwPollingIssues = links.filter(l => l.linkStatus === 'UP' && l.snmpStatus === 'DOWN').map(l => ({
+            ...l,
+            failureReason: 'SNMP Polling Timeout - No Bandwidth Data'
+        }));
+
+        // --- Dynamic Issue Categories ---
+
+        // 1. Group Events by Category (e.g., Interface, Hardware, BGP)
+        // Taking active Critical/Major events
+        const activeEvents = allEvents.filter(e => ['CRITICAL', 'MAJOR'].includes(e.severity));
+        const eventGroups = activeEvents.reduce((acc, curr) => {
+            const cat = curr.category || 'Other';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(curr);
+            return acc;
+        }, {} as Record<string, typeof allEvents>);
+
+        const dynamicEventCategories = Object.entries(eventGroups).map(([catName, items]) => ({
+            id: `event_cat_${catName.toLowerCase().replace(/\s+/g, '_')}`,
+            name: `${catName} Critical Events`,
+            count: items.length,
+            data: items,
+            icon: AlertTriangle,
+            color: '#ef4444' // Red for events
+        })).sort((a, b) => b.count - a.count).slice(0, 3); // Top 3 event categories
+
+        // 2. Group Config Failures by Reason
+        const configGroups = configFailure.reduce((acc, curr) => {
+            const reason = curr.failureReason || 'Unknown Error';
+            if (!acc[reason]) acc[reason] = [];
+            acc[reason].push(curr);
+            return acc;
+        }, {} as Record<string, typeof configFailure>);
+
+        const dynamicConfigCategories = Object.entries(configGroups).map(([reason, items]) => ({
+            id: `config_err_${reason.toLowerCase().replace(/\s+/g, '_')}`,
+            name: `Config: ${reason}`,
+            count: items.length,
+            data: items,
+            icon: ShieldCheck,
+            color: '#f59e0b' // Amber for config
+        })).sort((a, b) => b.count - a.count).slice(0, 3); // Top 3 config issues
+
+
         return [
             { id: 'link_down', name: 'Critical Link Outages', count: stats.link.issues, data: linkDown, icon: Zap, color: '#f43f5e' },
             { id: 'node_down', name: 'Device Downstream Issues', count: stats.device.issues, data: nodeDown, icon: Database, color: '#e11d48' },
-            { id: 'config_failure', name: 'Compliance & Config Drift', count: stats.config.issues, data: configIssues, icon: ShieldCheck, color: '#f59e0b' },
-            { id: 'performance_jitter', name: 'SLA Jitter Violations', count: stats.jitter.issues, data: highLatency, icon: Activity, color: '#8b5cf6' },
-            { id: 'critical_alarms', name: 'Active Critical Alarms', count: stats.critical.issues, data: criticalEvents, icon: AlertTriangle, color: '#ef4444' }
+            { id: 'bandwidth_polling', name: 'BW Data Not Polling', count: stats.bw.issues, data: bwPollingIssues, icon: BarChart3, color: '#f97316' },
+
+            // Insert Dynamic Categories Here
+            ...dynamicEventCategories,
+            ...dynamicConfigCategories,
+
+            { id: 'performance_jitter', name: 'SLA Jitter Violations', count: highLatency.length, data: highLatency, icon: Activity, color: '#8b5cf6' },
+            // Removed generic 'Critical Alarms' in favor of dynamic groups, unless no dynamic groups found
+            ...(dynamicEventCategories.length === 0 ? [{ id: 'critical_alarms', name: 'Active Critical Alarms', count: stats.critical.issues, data: criticalEvents, icon: AlertTriangle, color: '#ef4444' }] : [])
         ];
     }, [nodes, links, allEvents, configFailure, stats]);
 
@@ -372,217 +513,213 @@ export function UnifiedMainDashboard() {
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            {showNetworkMetrics && (
-                <div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                        <KPICard
-                            title="Device Monitoring"
-                            value={String(stats.device.val)}
-                            total={String(stats.device.total)}
-                            issueCount={stats.device.issues}
-                            icon={Database}
-                            onClick={() => {
-                                setSelectedModule('inventory');
-                                setSelectedSubModule('nodes');
-                            }}
-                            onIssuesClick={() => setView('issues')}
-                            exportData={stats.device.data}
-                            exportUpData={stats.device.upData}
-                            exportDownData={stats.device.downData}
-                        />
-                        <KPICard
-                            title="Link Health"
-                            value={String(stats.link.val)}
-                            total={String(stats.link.total)}
-                            issueCount={stats.link.issues}
-                            icon={Zap}
-                            onClick={() => {
-                                setSelectedModule('inventory');
-                                setSelectedSubModule('links');
-                            }}
-                            onIssuesClick={() => setView('issues')}
-                            exportData={stats.link.data}
-                            exportUpData={stats.link.upData}
-                            exportDownData={stats.link.downData}
-                        />
-                        <KPICard
-                            title="Bandwidth Monitoring"
-                            value={String(stats.bw.val)}
-                            total={String(stats.bw.total)}
-                            issueCount={stats.bw.issues}
-                            icon={BarChart3}
-                            onClick={() => {
-                                setSelectedModule('inventory');
-                                setSelectedSubModule('links');
-                            }}
-                            onIssuesClick={() => setView('issues')}
-                            exportData={stats.bw.data}
-                            exportUpData={stats.bw.upData}
-                            exportDownData={stats.bw.downData}
-                        />
-                        <KPICard
-                            title="Jitter Analysis"
-                            value={String(stats.jitter.val)}
-                            total={String(stats.jitter.total)}
-                            issueCount={stats.jitter.issues}
-                            icon={Activity}
-                            onClick={() => {
-                                setSelectedModule('inventory');
-                                setSelectedSubModule('links');
-                            }}
-                            onIssuesClick={() => setView('issues')}
-                            exportData={stats.jitter.data}
-                            exportUpData={stats.jitter.upData}
-                            exportDownData={stats.jitter.downData}
-                        />
-                        <KPICard
-                            title="Config Compliance"
-                            value={String(stats.config.val)}
-                            total={String(stats.config.total)}
-                            issueCount={stats.config.issues}
-                            icon={ShieldCheck}
-                            onClick={() => {
-                                setSelectedModule('config');
-                            }}
-                            onIssuesClick={() => setView('issues')}
-                            exportData={stats.config.data}
-                            exportUpData={stats.config.upData}
-                            exportDownData={stats.config.downData}
-                        />
-                    </div>
+            {/* Common Widgets - Always Visible, Data Changes based on Toggles */}
+            <div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <KPICard
+                        title="Device Status"
+                        value={String(stats.device.val)}
+                        total={String(stats.device.total)}
+                        issueCount={stats.device.issues}
+                        icon={Database}
+                        onClick={() => {
+                            setSelectedModule('inventory');
+                            setSelectedSubModule('nodes');
+                        }}
+                        onIssuesClick={() => setView('issues')}
+                        exportData={stats.device.data}
+                        exportUpData={stats.device.upData}
+                        exportDownData={stats.device.downData}
+                    />
+                    <KPICard
+                        title="Link Status"
+                        value={String(stats.link.val)}
+                        total={String(stats.link.total)}
+                        issueCount={stats.link.issues}
+                        icon={Zap}
+                        onClick={() => {
+                            setSelectedModule('inventory');
+                            setSelectedSubModule('links');
+                        }}
+                        onIssuesClick={() => setView('issues')}
+                        exportData={stats.link.data}
+                        exportUpData={stats.link.upData}
+                        exportDownData={stats.link.downData}
+                    />
+                    <KPICard
+                        title="Bandwidth Status"
+                        value={String(stats.bw.val)}
+                        total={String(stats.bw.total)}
+                        issueCount={stats.bw.issues}
+                        icon={BarChart3}
+                        onClick={() => {
+                            setSelectedModule('inventory');
+                            setSelectedSubModule('links');
+                        }}
+                        onIssuesClick={() => setView('issues')}
+                        exportData={stats.bw.data}
+                        exportUpData={stats.bw.upData}
+                        exportDownData={stats.bw.downData}
+                    />
+                    <KPICard
+                        title="Jitter Status"
+                        value={String(stats.jitter.val)}
+                        total={String(stats.jitter.total)}
+                        issueCount={stats.jitter.issues}
+                        icon={Activity}
+                        onClick={() => {
+                            setSelectedModule('inventory');
+                            setSelectedSubModule('links');
+                        }}
+                        onIssuesClick={() => setView('issues')}
+                        exportData={stats.jitter.data}
+                        exportUpData={stats.jitter.upData}
+                        exportDownData={stats.jitter.downData}
+                        downLabel="NOT POLLED"
+                    />
+                    <KPICard
+                        title="Config Download"
+                        value={String(stats.config.val)}
+                        total={String(stats.config.total)}
+                        issueCount={stats.config.issues}
+                        icon={ShieldCheck}
+                        onClick={() => {
+                            setSelectedModule('config');
+                        }}
+                        onIssuesClick={() => setView('issues')}
+                        exportData={stats.config.data}
+                        exportUpData={stats.config.upData}
+                        exportDownData={stats.config.downData}
+                    />
                 </div>
-            )}
+            </div>
 
             {/* Operational Performance Metrics */}
             <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {/* Network Based Stats */}
-                    {showNetworkMetrics && (
-                        <>
-                            <KPICard
-                                title="QOS Score"
-                                value={String(stats.qos.val)}
-                                total={String(stats.qos.total)}
-                                issueCount={stats.qos.total - stats.qos.val}
-                                icon={Signal}
-                                exportData={stats.qos.data}
-                                exportUpData={stats.qos.upData}
-                                exportDownData={stats.qos.downData}
-                            />
-                            <KPICard
-                                title="CPU Load"
-                                value={String(stats.cpu.val)}
-                                total={String(stats.cpu.total)}
-                                issueCount={stats.cpu.total - stats.cpu.val}
-                                icon={Cpu}
-                                exportData={stats.cpu.data}
-                                exportUpData={stats.cpu.upData}
-                                exportDownData={stats.cpu.downData}
-                            />
-                            <KPICard
-                                title="Memory Usage"
-                                value={String(stats.memory.val)}
-                                total={String(stats.memory.total)}
-                                issueCount={stats.memory.total - stats.memory.val}
-                                icon={MemoryStick}
-                                exportData={stats.memory.data}
-                                exportUpData={stats.memory.upData}
-                                exportDownData={stats.memory.downData}
-                            />
-                            <KPICard
-                                title="System Uptime"
-                                value={String(stats.uptime.val)}
-                                total={String(stats.uptime.total)}
-                                issueCount={stats.uptime.total - stats.uptime.val}
-                                icon={Clock}
-                                exportData={stats.uptime.data}
-                                exportUpData={stats.uptime.upData}
-                                exportDownData={stats.uptime.downData}
-                            />
-                            <KPICard
-                                title="Link Errors"
-                                value={String(stats.errors.total - stats.errors.val)}
-                                total={String(stats.errors.total)}
-                                issueCount={stats.errors.total - stats.errors.val}
-                                icon={AlertTriangle}
-                                exportData={stats.errors.data}
-                                exportUpData={stats.errors.upData}
-                                exportDownData={stats.errors.downData}
-                            />
-                            <KPICard
-                                title="Reboot Counter"
-                                value={String(stats.reboot.val)}
-                                total={String(stats.reboot.total)}
-                                issueCount={0}
-                                icon={RefreshCcw}
-                                exportData={stats.reboot.data}
-                                exportUpData={stats.reboot.upData}
-                            />
-                            <KPICard
-                                title="BGP Sessions"
-                                value={String(stats.bgp.val)}
-                                total={String(stats.bgp.total)}
-                                issueCount={stats.bgp.total - stats.bgp.val}
-                                icon={Network}
-                                exportData={stats.bgp.data}
-                                exportUpData={stats.bgp.upData}
-                                exportDownData={stats.bgp.downData}
-                            />
-                        </>
-                    )}
+                    {/* Network Based Stats - Always Visible, Data Scaled to 0 if Off */}
+                    <>
+                        <KPICard
+                            title="QOS Score"
+                            value={String(stats.qos.val)}
+                            total={String(stats.qos.total)}
+                            issueCount={stats.qos.total - stats.qos.val}
+                            icon={Signal}
+                            exportData={stats.qos.data}
+                            exportUpData={stats.qos.upData}
+                            exportDownData={stats.qos.downData}
+                        />
+                        <KPICard
+                            title="CPU Load"
+                            value={String(stats.cpu.val)}
+                            total={String(stats.cpu.total)}
+                            issueCount={stats.cpu.total - stats.cpu.val}
+                            icon={Cpu}
+                            exportData={stats.cpu.data}
+                            exportUpData={stats.cpu.upData}
+                            exportDownData={stats.cpu.downData}
+                        />
+                        <KPICard
+                            title="Memory Usage"
+                            value={String(stats.memory.val)}
+                            total={String(stats.memory.total)}
+                            issueCount={stats.memory.total - stats.memory.val}
+                            icon={MemoryStick}
+                            exportData={stats.memory.data}
+                            exportUpData={stats.memory.upData}
+                            exportDownData={stats.memory.downData}
+                        />
+                        <KPICard
+                            title="System Uptime"
+                            value={String(stats.uptime.val)}
+                            total={String(stats.uptime.total)}
+                            issueCount={stats.uptime.total - stats.uptime.val}
+                            icon={Clock}
+                            exportData={stats.uptime.data}
+                            exportUpData={stats.uptime.upData}
+                            exportDownData={stats.uptime.downData}
+                        />
+                        <KPICard
+                            title="Link Errors"
+                            value={String(stats.errors.val)}
+                            total={String(stats.errors.total)}
+                            issueCount={stats.errors.total - stats.errors.val}
+                            icon={AlertTriangle}
+                            exportData={stats.errors.data}
+                            exportUpData={stats.errors.upData}
+                            exportDownData={stats.errors.downData}
+                        />
+                        <KPICard
+                            title="Reboot Counter"
+                            value={String(stats.reboot.val)}
+                            total={String(stats.reboot.total)}
+                            issueCount={0}
+                            icon={RefreshCcw}
+                            exportData={stats.reboot.data}
+                            exportUpData={stats.reboot.upData}
+                        />
+                        <KPICard
+                            title="BGP Sessions"
+                            value={String(stats.bgp.val)}
+                            total={String(stats.bgp.total)}
+                            issueCount={stats.bgp.total - stats.bgp.val}
+                            icon={Network}
+                            exportData={stats.bgp.data}
+                            exportUpData={stats.bgp.upData}
+                            exportDownData={stats.bgp.downData}
+                        />
+                    </>
 
-                    {/* Application Specific Stats */}
-                    {showAppMetrics && (
-                        <>
-                            <KPICard
-                                title="Ticketing"
-                                value={String(stats.ticketing.val)}
-                                total={String(stats.ticketing.total)}
-                                issueCount={stats.ticketing.total - stats.ticketing.val}
-                                icon={Ticket}
-                                exportData={stats.ticketing.data}
-                                exportUpData={stats.ticketing.upData}
-                                exportDownData={stats.ticketing.downData}
-                            />
-                            <KPICard
-                                title="Mail Triggers"
-                                value={String(stats.mail.val)}
-                                total={String(stats.mail.total)}
-                                issueCount={0}
-                                icon={Mail}
-                                exportData={stats.mail.data}
-                                exportUpData={stats.mail.upData}
-                            />
-                            <KPICard
-                                title="RA Processing"
-                                value={String(stats.ra.val)}
-                                total={String(stats.ra.total)}
-                                issueCount={stats.ra.total - stats.ra.val}
-                                icon={FileSpreadsheet}
-                                exportData={stats.ra.data}
-                                exportUpData={stats.ra.upData}
-                                exportDownData={stats.ra.downData}
-                            />
-                            <KPICard
-                                title="Sched Disc"
-                                value={String(stats.disc.val)}
-                                total={String(stats.disc.total)}
-                                issueCount={0}
-                                icon={Calendar}
-                                exportData={stats.disc.data}
-                                exportUpData={stats.disc.upData}
-                            />
-                            <KPICard
-                                title="Sched Reports"
-                                value={String(stats.reports.val)}
-                                total={String(stats.reports.total)}
-                                issueCount={0}
-                                icon={FileSpreadsheet}
-                                exportData={stats.reports.data}
-                                exportUpData={stats.reports.upData}
-                            />
-                        </>
-                    )}
+                    {/* Application Specific Stats - Always Visible, Data Scaled to 0 if Off */}
+                    <>
+                        <KPICard
+                            title="Ticketing"
+                            value={String(stats.ticketing.val)}
+                            total={String(stats.ticketing.total)}
+                            issueCount={stats.ticketing.total - stats.ticketing.val}
+                            icon={Ticket}
+                            exportData={stats.ticketing.data}
+                            exportUpData={stats.ticketing.upData}
+                            exportDownData={stats.ticketing.downData}
+                        />
+                        <KPICard
+                            title="Main Triggers"
+                            value={String(stats.mainTriggers.val)}
+                            total={String(stats.mainTriggers.total)}
+                            issueCount={0}
+                            icon={Mail}
+                            exportData={stats.mainTriggers.data}
+                            exportUpData={stats.mainTriggers.upData}
+                        />
+                        <KPICard
+                            title="RA Processing"
+                            value={String(stats.ra.val)}
+                            total={String(stats.ra.total)}
+                            issueCount={stats.ra.total - stats.ra.val}
+                            icon={FileSpreadsheet}
+                            exportData={stats.ra.data}
+                            exportUpData={stats.ra.upData}
+                            exportDownData={stats.ra.downData}
+                        />
+                        <KPICard
+                            title="Sched Disc"
+                            value={String(stats.disc.val)}
+                            total={String(stats.disc.total)}
+                            issueCount={0}
+                            icon={Calendar}
+                            exportData={stats.disc.data}
+                            exportUpData={stats.disc.upData}
+                        />
+                        <KPICard
+                            title="Sched Reports"
+                            value={String(stats.reports.val)}
+                            total={String(stats.reports.total)}
+                            issueCount={0}
+                            icon={FileSpreadsheet}
+                            exportData={stats.reports.data}
+                            exportUpData={stats.reports.upData}
+                        />
+                    </>
                 </div>
             </div>
         </div>

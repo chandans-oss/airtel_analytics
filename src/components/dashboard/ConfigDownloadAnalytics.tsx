@@ -15,7 +15,9 @@ import {
     RotateCcw,
     Calendar,
     CheckCircle2,
-    Clock
+    Clock,
+    Server,
+    Layers
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
@@ -39,7 +41,7 @@ const NETWORK_FAILURES = [
     'PING FAILED'
 ];
 
-const EVEREST_FAILURES = [
+const APPLICATION_FAILURES = [
     'INVALID_COMMANDS',
     'PROFILE_EMPTY',
     'CREDENTIALS_EMPTY',
@@ -48,7 +50,7 @@ const EVEREST_FAILURES = [
 
 export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredContext?: boolean }) {
     const { getFilteredConfigFailures, configFailure, getFilteredNodes, nodes: allNodes, setSelectedModule, configCalendar } = useInventoryStore();
-    const [failureFilter, setFailureFilter] = React.useState<'ALL' | 'NETWORK' | 'EVEREST'>('ALL');
+    const [failureFilter, setFailureFilter] = React.useState<'ALL' | 'NETWORK' | 'APPLICATION'>('ALL');
 
 
     const nodesToUse = filteredContext ? getFilteredNodes() : allNodes;
@@ -142,7 +144,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
     const failureCount = 34;
 
     const breakdownStats = useMemo(() => {
-        const stats: { name: string; type: 'NETWORK' | 'EVEREST'; value: number; color: string }[] = [];
+        const stats: { name: string; type: 'NETWORK' | 'APPLICATION'; value: number; color: string }[] = [];
 
         // Mock counts for display purposes as requested
         const MOCK_COUNTS: Record<string, number> = {
@@ -172,14 +174,14 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
             });
         });
 
-        // Everest Stats
-        EVEREST_FAILURES.forEach((name, i) => {
+        // Application Stats
+        APPLICATION_FAILURES.forEach((name, i) => {
             const displayName = name.replace(/_/g, ' ');
             stats.push({
                 name: displayName,
-                type: 'EVEREST',
+                type: 'APPLICATION',
                 value: countFailures(name) || MOCK_COUNTS[displayName] || 0,
-                color: 'hsl(280, 70%, 55%)' // Purple for Everest
+                color: 'hsl(280, 70%, 55%)' // Purple for Application
             });
         });
 
@@ -222,6 +224,18 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
         });
         return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     }, [failures]);
+
+    const failuresByVendor = useMemo(() => {
+        const counts: Record<string, number> = {};
+        failures.forEach(f => {
+            const node = nodes.find(n => n.deviceName === f.deviceName || n.loopbackIP === f.ipAddress || n.mgmtIP === f.ipAddress || n.primaryIP === f.ipAddress);
+            const vendor = node?.make || f.vendor || 'Unknown';
+            counts[vendor] = (counts[vendor] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [failures, nodes]);
 
     // NEW PLOTS DATA PROCESSING
 
@@ -315,7 +329,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                             </div>
                             <div className="flex justify-between items-start z-10 relative">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Active Failures</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">Failure Nodes</p>
                                     <p className="text-3xl font-black text-foreground">{failureCount}</p>
                                     <div className="flex items-center gap-1.5 mt-2 bg-destructive/10 w-fit px-2 py-1 rounded-full border border-destructive/20">
                                         <AlertCircle size={10} className="text-destructive" />
@@ -334,7 +348,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                             </div>
                             <div className="flex justify-between items-start z-10 relative">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Successful Syncs</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Success Nodes</p>
                                     <p className="text-3xl font-black text-foreground">{successCount}</p>
                                     <div className="flex items-center gap-1.5 mt-2 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
                                         <CheckCircle2 size={10} className="text-emerald-600" />
@@ -353,7 +367,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                             </div>
                             <div className="flex justify-between items-start z-10 relative">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Total Configs</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Total Nodes to be Downloaded</p>
                                     <p className="text-3xl font-black text-foreground">{totalConfigs}</p>
                                     <div className="flex items-center gap-1.5 mt-2 bg-blue-500/10 w-fit px-2 py-1 rounded-full border border-blue-500/20">
                                         <History size={10} className="text-blue-600" />
@@ -375,7 +389,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                 Failure Category Breakdown
                             </h3>
                             <div className="flex bg-muted/50 p-1 rounded-lg">
-                                {['ALL', 'NETWORK', 'EVEREST'].map((type) => (
+                                {['ALL', 'NETWORK', 'APPLICATION'].map((type) => (
                                     <button
                                         key={type}
                                         onClick={() => setFailureFilter(type as any)}
@@ -439,8 +453,8 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
 
                     <div className="grid grid-cols-12 gap-6">
 
-                        {/* Row 1: Distribution & Device Types */}
-                        <div className="col-span-12 lg:col-span-5 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
+                        {/* Row 1: Distribution & Device Types & Vendor */}
+                        <div className="col-span-12 lg:col-span-4 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                     <Monitor size={16} className="text-primary" />
@@ -454,9 +468,9 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                     <Download size={12} />
                                 </button>
                             </div>
-                            <div className="flex-1 min-h-0 flex items-center gap-2">
+                            <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4">
                                 {/* Chart with Center Text */}
-                                <div className="relative w-[55%] h-full">
+                                <div className="relative w-full h-[200px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
@@ -466,6 +480,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                                 paddingAngle={5}
                                                 dataKey="value"
                                                 stroke="none"
+                                                cursor="pointer"
                                             >
                                                 {failureStats.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -483,34 +498,27 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                     </div>
                                 </div>
 
-                                {/* Custom Right-Side Legend */}
-                                <div className="w-[45%] flex flex-col justify-center gap-2.5 pl-2 overflow-y-auto max-h-[280px] scrollbar-hide">
+                                {/* Legend below */}
+                                <div className="w-full flex flex-wrap justify-center gap-x-4 gap-y-2 overflow-y-auto max-h-[100px] scrollbar-hide">
                                     {failureStats.map((stat, i) => (
-                                        <div key={i} className="flex items-center gap-2 group cursor-default">
+                                        <div key={i} className="flex items-center gap-1.5 group cursor-default">
                                             <div className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_8px_currentColor]" style={{ color: stat.color, backgroundColor: stat.color }} />
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-[10px] font-bold text-foreground leading-tight truncate group-hover:text-primary transition-colors" title={stat.name}>
-                                                    {stat.name}
-                                                </span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[10px] font-mono font-medium text-muted-foreground">
-                                                        {stat.value}
-                                                    </span>
-                                                    <span className="text-[9px] text-muted-foreground/60">
-                                                        {((stat.value / failureCount) * 100).toFixed(0)}%
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <span className="text-[10px] font-bold text-foreground leading-tight truncate group-hover:text-primary transition-colors" title={stat.name}>
+                                                {stat.name}
+                                            </span>
+                                            <span className="text-[9px] text-muted-foreground">
+                                                ({stat.value})
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-span-12 lg:col-span-7 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
+                        <div className="col-span-12 lg:col-span-4 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <History size={16} className="text-blue-500" />
+                                    <Layers size={16} className="text-blue-500" />
                                     Failures by Device Type
                                 </h3>
                                 <button
@@ -525,12 +533,41 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={failuresByDeviceType}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
                                         <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                         />
-                                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                                        <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} cursor="pointer" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="col-span-12 lg:col-span-4 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col min-h-[380px]">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                    <Server size={16} className="text-purple-500" />
+                                    Failures by Vendor
+                                </h3>
+                                <button
+                                    onClick={() => exportToCSV(failuresByVendor, 'failures_by_vendor')}
+                                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                                    title="Export Data"
+                                >
+                                    <Download size={12} />
+                                </button>
+                            </div>
+                            <div className="flex-1 min-h-0">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={failuresByVendor}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                                        />
+                                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={30} cursor="pointer" />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

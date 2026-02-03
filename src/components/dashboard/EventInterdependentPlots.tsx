@@ -38,7 +38,7 @@ const GENERATE_MOCK_DATA = (): EventRecord[] => {
     const severities = ['Critical', 'Major', 'Minor', 'Warning'] as const;
     const locations = ['Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune'];
     const srStatuses = ['Open', 'Closed', 'Pending'] as const;
-    const deviceTypes = ['Router', 'Switch', 'Firewall', 'Server'] as const;
+    const deviceTypes = ['Router', 'Switch', 'Firewall'] as const;
 
     // Helper to generate random IP
     const randIP = () => `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
@@ -142,7 +142,7 @@ export function EventInterdependentPlots() {
     // --- Derived Datasets ---
     const rootCauseData = aggregate('rootCause');
 
-    const deviceTypeData = aggregate('deviceType');
+    const deviceTypeData = aggregate('deviceType').filter(d => d.name !== 'Server');
     const makeData = aggregate('vendor');
     const regionData = aggregate('region');
 
@@ -163,7 +163,7 @@ export function EventInterdependentPlots() {
             <g transform={`translate(${x + width + 5},${y + height / 2 - 7})`}>
                 <text x={0} y={10} fill="#64748b" fontSize="9" fontWeight="bold">{value}</text>
                 <foreignObject x={25} y={-2} width={16} height={16}>
-                    <div xmlns="http://www.w3.org/1999/xhtml"
+                    <div
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         title="Download CSV"
                         onClick={(e) => {
@@ -225,7 +225,7 @@ export function EventInterdependentPlots() {
     };
 
     // --- Chart Components ---
-    const ChartCard = ({ title, data, field, type = 'bar', color = COLORS.primary, width = '100%', yAxisWidth = 100, limit }: any) => {
+    const ChartCard = ({ title, data, field, type = 'bar', layout = 'vertical', color = COLORS.primary, width = '100%', yAxisWidth = 100, limit }: any) => {
         const isTruncated = limit && data.length > limit;
         const displayData = isTruncated ? data.slice(0, limit) : data;
 
@@ -263,7 +263,7 @@ export function EventInterdependentPlots() {
                     </div>
                 </div>
                 {/* Chart Area */}
-                <div className={cn("w-full transition-all", type === 'pie' ? "h-[160px]" : "h-[250px]")}>
+                <div className={cn("w-full transition-all", type === 'pie' ? "h-[160px]" : "h-[300px]")}>
                     <ResponsiveContainer width={width} height="100%">
                         {type === 'pie' ? (
                             <PieChart>
@@ -289,29 +289,46 @@ export function EventInterdependentPlots() {
                                 <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
                             </PieChart>
                         ) : (
-                            <BarChart data={displayData} layout="vertical" margin={{ top: 5, right: 45, left: 0, bottom: 5 }} barCategoryGap={20}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" opacity={0.5} />
-                                <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 9 }} />
-                                <YAxis
-                                    dataKey="name"
-                                    type="category"
-                                    width={yAxisWidth}
-                                    tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                    interval={0}
-                                />
+                            <BarChart data={displayData} layout={layout} margin={{ top: 5, right: 30, left: 10, bottom: layout === 'horizontal' ? 80 : 20 }} barCategoryGap={layout === 'vertical' ? 20 : 10}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={layout === 'horizontal'} vertical={layout === 'vertical'} stroke="#E5E7EB" opacity={0.5} />
+                                {layout === 'vertical' ? (
+                                    <>
+                                        <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 8 }} />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={yAxisWidth}
+                                            tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            interval={0}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <XAxis
+                                            dataKey="name"
+                                            type="category"
+                                            height={80}
+                                            tick={{ fontSize: 8, fill: '#64748b', fontWeight: 600, angle: -45, textAnchor: 'end', dy: 10 } as any}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            interval={0}
+                                        />
+                                        <YAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 8 }} />
+                                    </>
+                                )}
                                 <Tooltip
                                     cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
                                 />
                                 <Bar
                                     dataKey="value"
-                                    barSize={24}
-                                    radius={[0, 4, 4, 0]}
+                                    barSize={layout === 'vertical' ? 24 : undefined}
+                                    radius={layout === 'vertical' ? [0, 4, 4, 0] : [4, 4, 0, 0]}
                                     onClick={(entry: any) => handleInteraction(field, entry.name || entry.payload?.name)}
                                     cursor="pointer"
-                                    label={(props) => <CustomBarLabel {...props} field={field} />}
+                                    label={layout === 'vertical' ? (props) => <CustomBarLabel {...props} field={field} /> : undefined}
                                 >
                                     {displayData.map((entry: any, index: number) => (
                                         <Cell
@@ -396,6 +413,7 @@ export function EventInterdependentPlots() {
                     title="Down Count vs Issues"
                     data={rootCauseData}
                     field="rootCause"
+                    layout="horizontal"
                     color={COLORS.primary}
                     yAxisWidth={110}
                 />
@@ -408,7 +426,7 @@ export function EventInterdependentPlots() {
                     data={deviceTypeData}
                     field="deviceType"
                     type="pie"
-                    color={COLORS.success}
+                    color={COLORS.secondary}
                 />
 
                 {/* 4. Vendor */}
@@ -454,7 +472,7 @@ export function EventInterdependentPlots() {
                                             dataKey="value"
                                             cursor="pointer"
                                             onClick={(entry: any) => {
-                                                handleInteraction(expandedChartField!, entry.name);
+                                                handleInteraction(expandedChartField as keyof EventRecord, entry.name);
                                                 setExpandedChartField(null); // Close on selection to show filtered state
                                             }}
                                             label
@@ -489,7 +507,7 @@ export function EventInterdependentPlots() {
                                             barSize={30}
                                             radius={[0, 4, 4, 0]}
                                             onClick={(entry: any) => {
-                                                handleInteraction(expandedChartField!, entry.name);
+                                                handleInteraction(expandedChartField as keyof EventRecord, entry.name);
                                                 setExpandedChartField(null);
                                             }}
                                             cursor="pointer"

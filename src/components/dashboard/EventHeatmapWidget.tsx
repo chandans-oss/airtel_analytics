@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Download, ChevronRight, X, Clock, Calendar, AlertCircle, Filter } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { exportToCSV } from '@/utils/exportUtils';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
 // --- MOCK DATA GENERATION ---
 
@@ -28,7 +28,7 @@ const generateHeatmapData = () => {
     const data = [];
     const eventTypes = ['Link Down', 'High CPU', 'BGP Flap', 'Interface Reset', 'Power Failure'];
     const customers = ['DABUR', 'KPMG', 'GOVT', 'HATSUN', 'PAAYAS'];
-    const sevs = ['Critical', 'Warning', 'Info'];
+    const sevs = ['Critical', 'Major', 'Minor'];
 
     for (let d = 0; d < DAYS.length; d++) {
         const dayName = DAYS[d];
@@ -290,61 +290,46 @@ export function EventHeatmapWidget() {
                                 </div>
                             </div>
 
-                            {/* 2. Charts Section (Image 3 style) */}
+                            {/* 2. Charts Section (Dynamic Analysis) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Down Alarm Chart */}
+                                {/* Severity Distribution - Bar Chart (User Requested) */}
                                 <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-sm border border-border/50">
-                                    <h4 className="text-sm font-bold text-center text-blue-500 mb-4">Down Alarm – Suppressed Status</h4>
+                                    <h4 className="text-[10px] font-black uppercase text-blue-500 mb-6 text-center tracking-widest">Severity Analysis (Count of Events)</h4>
                                     <div className="h-[200px]">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={[
-                                                        { name: 'Yes', value: 35, color: '#818cf8' },   // Indigo
-                                                        { name: 'Delayed', value: 25, color: '#a78bfa' }, // Purple
-                                                        { name: 'No', value: 40, color: '#f472b6' }     // Pink
-                                                    ]}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                    strokeWidth={0}
-                                                >
+                                            <BarChart data={[
+                                                { name: 'Critical', val: selectedCell.events.filter((e: any) => e.severity === 'Critical').length || 0, color: '#ef4444' },
+                                                { name: 'Major', val: selectedCell.events.filter((e: any) => e.severity === 'Major').length || 0, color: '#f59e0b' },
+                                                { name: 'Minor', val: selectedCell.events.filter((e: any) => e.severity === 'Minor').length || 0, color: '#0ea5e9' }
+                                            ]}>
+                                                <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                                <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                                <Tooltip
+                                                    cursor={{ fill: 'transparent' }}
+                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                />
+                                                <Bar dataKey="val" radius={[4, 4, 0, 0]} barSize={40}>
                                                     {[
-                                                        { name: 'Yes', value: 35, color: '#818cf8' },
-                                                        { name: 'Delayed', value: 25, color: '#a78bfa' },
-                                                        { name: 'No', value: 40, color: '#f472b6' }
+                                                        { severity: 'Critical', color: '#ef4444' },
+                                                        { severity: 'Major', color: '#f59e0b' },
+                                                        { severity: 'Minor', color: '#0ea5e9' }
                                                     ].map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
-                                                </Pie>
-                                                <Tooltip />
-                                                <Legend
-                                                    verticalAlign="bottom"
-                                                    height={36}
-                                                    iconType="square"
-                                                    iconSize={10}
-                                                    formatter={(value, entry: any) => <span className="text-xs font-bold text-muted-foreground ml-1">{value}</span>}
-                                                />
-                                            </PieChart>
+                                                </Bar>
+                                            </BarChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
 
-                                {/* Up Alarm Chart */}
+                                {/* Event Type Distribution - Pie Chart */}
                                 <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-sm border border-border/50">
-                                    <h4 className="text-sm font-bold text-center text-blue-500 mb-4">Up Alarm – Suppressed Status</h4>
+                                    <h4 className="text-[10px] font-black uppercase text-blue-500 mb-6 text-center tracking-widest">Event Nature Breakdown</h4>
                                     <div className="h-[200px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={[
-                                                        { name: 'Yes', value: 45, color: '#818cf8' },
-                                                        { name: 'No', value: 15, color: '#a78bfa' },
-                                                        { name: 'N/A', value: 40, color: '#e879f9' }
-                                                    ]}
+                                                    data={analytics?.types || []}
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={60}
@@ -353,12 +338,8 @@ export function EventHeatmapWidget() {
                                                     dataKey="value"
                                                     strokeWidth={0}
                                                 >
-                                                    {[
-                                                        { name: 'Yes', value: 45, color: '#818cf8' },
-                                                        { name: 'No', value: 15, color: '#a78bfa' },
-                                                        { name: 'N/A', value: 40, color: '#e879f9' }
-                                                    ].map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    {(analytics?.types || []).map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
                                                 <Tooltip />
@@ -367,7 +348,7 @@ export function EventHeatmapWidget() {
                                                     height={36}
                                                     iconType="square"
                                                     iconSize={10}
-                                                    formatter={(value, entry: any) => <span className="text-xs font-bold text-muted-foreground ml-1">{value}</span>}
+                                                    formatter={(value) => <span className="text-[10px] font-bold text-muted-foreground uppercase ml-1">{value}</span>}
                                                 />
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -398,7 +379,7 @@ export function EventHeatmapWidget() {
                                                         <span className={cn(
                                                             "px-2 py-1 rounded text-[10px] uppercase font-black tracking-wide border shadow-sm",
                                                             e.severity === 'Critical' ? "text-red-600 bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/20" :
-                                                                e.severity === 'Warning' ? "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20" :
+                                                                e.severity === 'Major' ? "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20" :
                                                                     "text-sky-600 bg-sky-50 border-sky-200 dark:bg-sky-500/10 dark:border-sky-500/20"
                                                         )}>
                                                             {e.severity}

@@ -12,7 +12,8 @@ import {
   ChevronDown,
   ChevronRight,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Signal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInventoryStore } from '@/store/inventoryStore';
@@ -31,7 +32,8 @@ const dashboardSubModules = [
     ]
   },
   { id: 'events', label: 'Events', icon: Activity },
-  { id: 'discovery', label: 'Discovery & Change Analytics', icon: Search },
+  { id: 'discovery', label: 'Discovery & Change', icon: Search },
+  { id: 'polling', label: 'Polling', icon: Signal },
   { id: 'config', label: 'Config Mgmt', icon: Settings },
   { id: 'ra', label: 'RA', icon: FileText },
   { id: 'performance', label: 'Performance', icon: BarChart3 },

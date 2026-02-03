@@ -5,6 +5,7 @@ import { SuppressionLogicTable } from './SuppressionLogicTable';
 import { EventInterdependentPlots } from './EventInterdependentPlots';
 
 import { EventHeatmapWidget } from './EventHeatmapWidget';
+import { EventAnalyticalHeatmaps } from './EventAnalyticalHeatmaps';
 import {
     Clock,
     Filter,
@@ -313,8 +314,13 @@ export function EventsDashboard() {
 
 
                         {/* Event Heatmap Widget (Also Full Width - User Requested "Assume as a widget") */}
-                        <div className="col-span-12 h-[500px]">
+                        <div className="col-span-12">
                             <EventHeatmapWidget />
+                        </div>
+
+                        {/* Advanced Analytical Heatmaps (Aging & Closures) */}
+                        <div className="col-span-12">
+                            <EventAnalyticalHeatmaps />
                         </div>
 
                         {/* Lifecycle Flow - Corporate Redesign V2 */}

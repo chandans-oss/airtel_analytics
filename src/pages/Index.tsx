@@ -3,6 +3,7 @@ import { EventsDashboard } from '@/components/dashboard/EventsDashboard';
 import { RADashboard } from '@/components/dashboard/RADashboard';
 
 import { DiscoveryDashboard } from '@/components/dashboard/DiscoveryDashboard';
+import { PollingDashboard } from '@/components/dashboard/PollingDashboard';
 import { PerformanceDashboard } from '@/components/dashboard/PerformanceDashboard';
 import { UnifiedMainDashboard } from '@/components/dashboard/UnifiedMainDashboard';
 import { BandwidthAnalytics } from '@/components/dashboard/BandwidthAnalytics';
@@ -46,6 +47,10 @@ const Index = () => {
 
     if (module === 'discovery') {
       return <DiscoveryDashboard />;
+    }
+
+    if (module === 'polling') {
+      return <PollingDashboard />;
     }
 
     if (module === 'performance') {

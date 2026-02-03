@@ -307,7 +307,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                             </button>
                             <div className="flex items-center gap-2 text-destructive">
                                 <FileWarning size={18} />
-                                <span className="text-xs font-bold uppercase tracking-widest text-foreground">Config Management Compliance</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-foreground">Config Management Analytics</span>
                             </div>
                         </div>
                         <div className="flex gap-2">

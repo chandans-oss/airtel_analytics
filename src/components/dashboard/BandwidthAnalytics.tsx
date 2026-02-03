@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
     BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
-    CartesianGrid, LabelList
+    CartesianGrid, LabelList, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { exportToCSV } from '@/utils/exportUtils';
 
@@ -58,6 +58,8 @@ export function BandwidthAnalytics() {
             };
         });
     }, [links]);
+
+    const colors = ['#f43f5e', '#f97316', '#8b5cf6', '#3b82f6', '#06b6d4'];
 
     const stats = useMemo(() => {
         const total = BANDWIDTH_DATA.length;
@@ -103,48 +105,111 @@ export function BandwidthAnalytics() {
                 </div>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Cards / Diagnostic Boxes */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-5"><Activity size={40} /></div>
-                    <div>
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col justify-between min-h-[110px] shadow-sm relative overflow-hidden group hover:bg-primary/10 transition-all border-l-4 border-l-primary">
+                    <div className="flex items-start justify-between">
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total WAN Links</p>
-                        <p className="text-3xl font-black">{stats.total}</p>
+                        <Activity size={16} className="text-primary opacity-40" />
                     </div>
-                    <div className="p-3 bg-primary/10 rounded-xl text-primary font-black uppercase tracking-tighter text-[10px]">Backbone</div>
+                    <p className="text-3xl font-black">{stats.total}</p>
+                    <div className="flex items-center gap-1.5 mt-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[9px] font-bold text-primary uppercase">Monitored Backbone</span>
+                    </div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Polled' && "ring-2 ring-emerald-500/50 border-emerald-500/30 shadow-lg")} onClick={() => setFilter('Polled')}>
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1 italic">Polling Health</p>
-                        <p className="text-3xl font-black text-emerald-600">{stats.polled}</p>
-                        <div className="flex items-center gap-1 text-[9px] text-emerald-700 font-bold mt-1 uppercase tracking-tighter"><CheckCircle2 size={10} /> Up & Collecting</div>
+                <div className={cn(
+                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    filter === 'Polled' ? "bg-emerald-500/10 border-emerald-500 shadow-lg" : "bg-emerald-500/5 border-emerald-500/20"
+                )} onClick={() => setFilter('Polled')}>
+                    <div className="flex items-start justify-between">
+                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1">Polling Health</p>
+                        <ShieldCheck size={16} className="text-emerald-500 opacity-40 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><ShieldCheck size={24} /></div>
+                    <p className="text-3xl font-black text-emerald-600">{stats.polled}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-emerald-700 font-bold mt-1 uppercase tracking-tighter">
+                        <CheckCircle2 size={10} /> {Math.round((stats.polled / stats.total) * 100)}% Success Rate
+                    </div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Not Polled' && "ring-2 ring-red-500/50 border-red-500/30 shadow-lg")} onClick={() => setFilter('Not Polled')}>
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1 italic">Silent Links</p>
-                        <p className="text-3xl font-black text-destructive">{stats.notPolled}</p>
-                        <div className="flex items-center gap-1 text-[9px] text-destructive font-bold mt-1 uppercase tracking-tighter"><XCircle size={10} /> Data Collection Fail</div>
+                <div className={cn(
+                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    filter === 'Not Polled' ? "bg-rose-500/10 border-rose-500 shadow-lg" : "bg-rose-500/5 border-rose-500/20"
+                )} onClick={() => setFilter('Not Polled')}>
+                    <div className="flex items-start justify-between">
+                        <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest mb-1">Silent Links</p>
+                        <AlertTriangle size={16} className="text-rose-500 opacity-40 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="p-3 bg-red-500/10 rounded-xl text-destructive group-hover:bg-red-500 group-hover:text-white transition-colors"><AlertTriangle size={24} /></div>
+                    <p className="text-3xl font-black text-rose-600">{stats.notPolled}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-rose-700 font-bold mt-1 uppercase tracking-tighter">
+                        <XCircle size={10} /> {Math.round((stats.notPolled / stats.total) * 100)}% Failure Rate
+                    </div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'High Util' && "ring-2 ring-amber-500/50 border-amber-500/30 shadow-lg")} onClick={() => setFilter('High Util')}>
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1 italic">Congestion Risk</p>
-                        <p className="text-3xl font-black text-amber-600">{stats.highUtil}</p>
-                        <div className="flex items-center gap-1 text-[9px] text-amber-700 font-bold mt-1 uppercase tracking-tighter"><TrendingUp size={10} /> &gt;80% Utilization</div>
+                <div className={cn(
+                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    filter === 'High Util' ? "bg-amber-500/10 border-amber-500 shadow-lg" : "bg-amber-500/5 border-amber-500/20"
+                )} onClick={() => setFilter('High Util')}>
+                    <div className="flex items-start justify-between">
+                        <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1">Congestion Risk</p>
+                        <TrendingUp size={16} className="text-amber-500 opacity-40 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors"><Activity size={24} /></div>
+                    <p className="text-3xl font-black text-amber-600">{stats.highUtil}</p>
+                    <div className="flex items-center gap-1 text-[9px] text-amber-700 font-bold mt-1 uppercase tracking-tighter">
+                        <Activity size={10} /> &gt;80% Utilization
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Visual Insights Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Visual Insights Section - Pie Chart */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-6">
+                        <Activity size={16} className="text-primary" />
+                        Issue Distribution
+                    </h3>
+                    <div className="h-[280px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={issueData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {issueData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--card))',
+                                        borderRadius: '12px',
+                                        border: '1px solid hsl(var(--border))',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold'
+                                    }}
+                                />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    height={36}
+                                    iconType="circle"
+                                    formatter={(value) => <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{value}</span>}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <p className="text-[9px] text-center text-muted-foreground mt-4 uppercase font-bold opacity-60">
+                        Percentage breakdown of diagnostic failures
+                    </p>
+                </div>
+
+                {/* Visual Insights Section - Bar Chart */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col lg:col-span-1">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                             <BarChart3 size={16} className="text-primary" />
@@ -165,11 +230,14 @@ export function BandwidthAnalytics() {
                                 <Bar
                                     dataKey="value"
                                     fill="hsl(var(--primary))"
-                                    barSize={22}
+                                    barSize={18}
                                     radius={[0, 6, 6, 0]}
                                     cursor="pointer"
                                     onClick={(data) => exportToCSV(BANDWIDTH_DATA.filter(d => d.issue === data.name), `Bandwidth_Issue_${data.name}`)}
                                 >
+                                    {issueData.map((_entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                    ))}
                                     <LabelList dataKey="value" position="right" style={{ fontSize: '11px', fontWeight: 'black' }} />
                                 </Bar>
                             </BarChart>

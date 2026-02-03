@@ -204,7 +204,7 @@ export function DiscoveryDashboard() {
                     <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <div>
                         <h1 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90 leading-tight">
-                            Discovery & Change
+                            Discovery & Change Analytics
                         </h1>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-pulse" />
@@ -382,6 +382,12 @@ export function DiscoveryDashboard() {
                                     <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                                    />
+                                    <Legend
+                                        verticalAlign="top"
+                                        height={36}
+                                        iconType="circle"
+                                        formatter={(value) => <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{value}</span>}
                                     />
                                     <Line type="monotone" dataKey="new" stroke="hsl(var(--primary))" strokeWidth={3} name="New Devices" />
                                     <Line type="monotone" dataKey="changes" stroke="hsl(210, 100%, 55%)" strokeWidth={3} name="Changes" />

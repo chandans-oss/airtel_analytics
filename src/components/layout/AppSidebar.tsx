@@ -31,7 +31,7 @@ const dashboardSubModules = [
     ]
   },
   { id: 'events', label: 'Events', icon: Activity },
-  { id: 'discovery', label: 'Discovery & Change', icon: Search },
+  { id: 'discovery', label: 'Discovery & Change Analytics', icon: Search },
   { id: 'config', label: 'Config Mgmt', icon: Settings },
   { id: 'ra', label: 'RA', icon: FileText },
   { id: 'performance', label: 'Performance', icon: BarChart3 },

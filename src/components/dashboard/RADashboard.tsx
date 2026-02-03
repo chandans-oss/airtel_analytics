@@ -183,7 +183,7 @@ export function RADashboard() {
                     </button>
                     <div className="h-5 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <h1 className="text-[12px] font-black uppercase tracking-[0.15em] text-foreground/90">
-                        RA Inventory Intelligence
+                        RA Inventory Analytics
                     </h1>
                 </div>
                 <div className="h-[1px] flex-1 mx-4 bg-gradient-to-r from-border/50 to-transparent" />

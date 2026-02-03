@@ -168,10 +168,19 @@ export function BandwidthAnalytics() {
                     {/* Background Glow Effect */}
                     <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/5 blur-[80px] group-hover:bg-primary/10 transition-colors" />
 
-                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-6 relative z-10">
-                        <Activity size={16} className="text-rose-500 animate-pulse" />
-                        Issue distribution
-                    </h3>
+                    <div className="flex items-center justify-between mb-6 relative z-10">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <Activity size={16} className="text-rose-500 animate-pulse" />
+                            Issue distribution
+                        </h3>
+                        <button
+                            onClick={() => exportToCSV(BANDWIDTH_DATA.filter(d => d.status === 'Not Polled'), 'Bandwidth_Failure_Analysis')}
+                            className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 transition-all bg-rose-500/5 border border-rose-500/20 shadow-sm"
+                            title="Export Failure Data"
+                        >
+                            <Download size={14} />
+                        </button>
+                    </div>
 
                     <div className="h-[280px] w-full relative">
                         {/* Center Content Overlaid on Donut */}

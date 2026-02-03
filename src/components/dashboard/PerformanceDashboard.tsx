@@ -37,7 +37,8 @@ import {
     Maximize2,
     Search,
     Filter,
-    Table
+    Table,
+    Thermometer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -386,81 +387,34 @@ export function PerformanceDashboard() {
                         <StatCard title="Stability Rating" value="HIGH" icon={ShieldAlert} sub="92% Mean Consistency" color="emerald" onExport={() => exportToCSV(filteredData.map(d => ({ lsi: d.lsi, device: d.deviceName, stability: d.stabilityScore })), 'Link_Stability_Audit')} />
                     </div>
 
-                    {/* New NOC Parameter Health Block */}
-                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm overflow-hidden group/noc-health relative">
-                        <div className="absolute top-0 right-0 p-8 opacity-5">
-                            <Gauge size={120} />
-                        </div>
-                        <div className="flex items-center justify-between mb-8 relative z-10">
-                            <div className="flex flex-col gap-1">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-foreground flex items-center gap-2">
-                                    <ShieldAlert size={18} className="text-rose-500 animate-pulse" />
-                                    Operational Parameter Health Breakdown
-                                </h3>
-                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">Violation counts across critical NOC telemetry headers</p>
-                            </div>
-                            <button
-                                onClick={() => exportToCSV(parameterHealthData, 'Operational_Parameter_Health_Audit')}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground text-[10px] font-black uppercase tracking-widest transition-all border border-border/50"
-                            >
-                                <Download size={14} /> Export Health Audit
-                            </button>
-                        </div>
+                    {/* NOC Parameter Health Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
+                        {parameterHealthData.map((item, idx) => {
+                            let icon = Info;
+                            let exportFn = () => { };
 
-                        <div className="h-[350px] relative z-10">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={parameterHealthData} layout="vertical" margin={{ left: 40, right: 40 }}>
-                                    <defs>
-                                        <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.8} />
-                                            <stop offset="100%" stopColor="#fb7185" stopOpacity={1} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
-                                    <XAxis type="number" hide />
-                                    <YAxis
-                                        dataKey="name"
-                                        type="category"
-                                        width={160}
-                                        tick={{ fontSize: 10, fontWeight: 900, fill: 'hsl(var(--muted-foreground))' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
-                                        contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px', fontWeight: 'bold' }}
-                                    />
-                                    <Bar
-                                        dataKey="value"
-                                        fill="url(#barGradient)"
-                                        barSize={24}
-                                        radius={[0, 10, 10, 0]}
-                                        onClick={(data) => {
-                                            const metric = data.name;
-                                            let exportData = [];
-                                            if (metric === 'LINK STATE (DOWN)') exportData = filteredData.filter(d => d.linkState !== 'UP');
-                                            if (metric === 'CPU > 80%') exportData = filteredData.filter(d => d.cpu > 80);
-                                            if (metric === 'MEM > 80%') exportData = filteredData.filter(d => d.memory > 80);
-                                            if (metric === 'TEMP > 60°C') exportData = filteredData.filter(d => d.temperature > 60);
-                                            if (metric === 'HALF DUPLEX') exportData = filteredData.filter(d => d.duplex === 'Half');
-                                            if (metric === 'IN ERR RATE > 1') exportData = filteredData.filter(d => d.inErrorRate > 1);
-                                            if (metric === 'IN DISC RATE > 1') exportData = filteredData.filter(d => d.inDiscardRate > 1);
-                                            if (metric === 'UTIL > 80%') exportData = filteredData.filter(d => d.latestUtil > 80);
-                                            if (metric === 'STATUS CODE ERR') exportData = filteredData.filter(d => d.linkStatusCode !== '200');
-                                            exportToCSV(exportData, `Links_Failing_${metric.replace(/\s+/g, '_')}`);
-                                        }}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <LabelList
-                                            dataKey="value"
-                                            position="right"
-                                            style={{ fontSize: '12px', fontWeight: '900', fill: 'hsl(var(--foreground))' }}
-                                            formatter={(v: any) => `${v} ASSETS`}
-                                        />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
+                            if (item.name === 'LINK STATE (DOWN)') { icon = ZapOff; exportFn = () => exportToCSV(filteredData.filter(d => d.linkState !== 'UP'), 'Down_Link_Assets'); }
+                            if (item.name === 'CPU > 80%') { icon = Cpu; exportFn = () => exportToCSV(filteredData.filter(d => d.cpu > 80), 'High_CPU_Assets'); }
+                            if (item.name === 'MEM > 80%') { icon = Layers; exportFn = () => exportToCSV(filteredData.filter(d => d.memory > 80), 'High_Memory_Assets'); }
+                            if (item.name === 'TEMP > 60°C') { icon = Thermometer; exportFn = () => exportToCSV(filteredData.filter(d => d.temperature > 60), 'High_Temp_Assets'); }
+                            if (item.name === 'HALF DUPLEX') { icon = Shuffle; exportFn = () => exportToCSV(filteredData.filter(d => d.duplex === 'Half'), 'Half_Duplex_Assets'); }
+                            if (item.name === 'IN ERR RATE > 1') { icon = AlertTriangle; exportFn = () => exportToCSV(filteredData.filter(d => d.inErrorRate > 1), 'High_Error_Rate_Assets'); }
+                            if (item.name === 'IN DISC RATE > 1') { icon = XCircle; exportFn = () => exportToCSV(filteredData.filter(d => d.inDiscardRate > 1), 'High_Discard_Rate_Assets'); }
+                            if (item.name === 'UTIL > 80%') { icon = TrendingUp; exportFn = () => exportToCSV(filteredData.filter(d => d.latestUtil > 80), 'High_Utilization_Assets'); }
+                            if (item.name === 'STATUS CODE ERR') { icon = ShieldAlert; exportFn = () => exportToCSV(filteredData.filter(d => d.linkStatusCode !== '200'), 'Status_Code_Error_Assets'); }
+
+                            return (
+                                <StatCard
+                                    key={idx}
+                                    title={item.name}
+                                    value={item.value}
+                                    icon={icon}
+                                    sub="Violation Assets"
+                                    color={item.value > 0 ? 'rose' : 'emerald'}
+                                    onExport={exportFn}
+                                />
+                            );
+                        })}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

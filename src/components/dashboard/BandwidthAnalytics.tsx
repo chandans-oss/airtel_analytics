@@ -164,25 +164,54 @@ export function BandwidthAnalytics() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Visual Insights Section - Pie Chart */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-6">
-                        <Activity size={16} className="text-primary" />
-                        Issue Distribution
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col relative group overflow-hidden">
+                    {/* Background Glow Effect */}
+                    <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/5 blur-[80px] group-hover:bg-primary/10 transition-colors" />
+
+                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-6 relative z-10">
+                        <Activity size={16} className="text-rose-500 animate-pulse" />
+                        Issue distribution
                     </h3>
-                    <div className="h-[280px] w-full">
+
+                    <div className="h-[280px] w-full relative">
+                        {/* Center Content Overlaid on Donut */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                            <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] leading-none mb-1">Total</span>
+                            <span className="text-4xl font-black text-foreground tabular-nums drop-shadow-sm">{stats.notPolled}</span>
+                            <span className="text-[10px] font-black text-rose-500/80 uppercase tracking-widest mt-1">Failures</span>
+                        </div>
+
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
+                                <defs>
+                                    {issueData.map((_entry, index) => (
+                                        <linearGradient key={`grad-${index}`} id={`colorGrad-${index}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={colors[index % colors.length]} stopOpacity={0.9} />
+                                            <stop offset="95%" stopColor={colors[index % colors.length]} stopOpacity={0.6} />
+                                        </linearGradient>
+                                    ))}
+                                </defs>
                                 <Pie
                                     data={issueData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    innerRadius={75}
+                                    outerRadius={95}
+                                    paddingAngle={8}
                                     dataKey="value"
+                                    animationBegin={0}
+                                    animationDuration={1500}
+                                    stroke="none"
                                 >
-                                    {issueData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                    {issueData.map((_entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={`url(#colorGrad-${index})`}
+                                            className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                                            style={{
+                                                filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))'
+                                            }}
+                                        />
                                     ))}
                                 </Pie>
                                 <Tooltip
@@ -190,21 +219,38 @@ export function BandwidthAnalytics() {
                                         backgroundColor: 'hsl(var(--card))',
                                         borderRadius: '12px',
                                         border: '1px solid hsl(var(--border))',
+                                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                                         fontSize: '10px',
-                                        fontWeight: 'bold'
+                                        fontWeight: 'bold',
+                                        padding: '8px 12px'
                                     }}
+                                    itemStyle={{ color: 'hsl(var(--foreground))' }}
                                 />
                                 <Legend
                                     verticalAlign="bottom"
-                                    height={36}
+                                    height={40}
                                     iconType="circle"
-                                    formatter={(value) => <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{value}</span>}
+                                    content={({ payload }) => (
+                                        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+                                            {payload?.map((entry: any, index: number) => (
+                                                <div key={index} className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/50">
+                                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                                                        {entry.value}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-foreground tabular-nums ml-1 border-l border-border/50 pl-1.5 opacity-80">
+                                                        {issueData[index]?.value}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <p className="text-[9px] text-center text-muted-foreground mt-4 uppercase font-bold opacity-60">
-                        Percentage breakdown of diagnostic failures
+                    <p className="text-[10px] text-center text-muted-foreground/50 mt-8 uppercase font-bold tracking-[0.1em] italic">
+                        Real-time Diagnostic Breakdown
                     </p>
                 </div>
 

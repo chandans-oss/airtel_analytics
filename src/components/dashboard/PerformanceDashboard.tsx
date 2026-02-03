@@ -83,6 +83,11 @@ interface EnrichedLinkData {
     efficiencyScore: number;
     isPrimary: boolean;
     backupLsi?: string;
+    temperature: number;
+    duplex: 'Full' | 'Half';
+    inErrorRate: number;
+    inDiscardRate: number;
+    linkStatusCode: string;
 }
 
 const CSV_URL = '/data/Link Data.csv';
@@ -183,7 +188,12 @@ export function PerformanceDashboard() {
                 history,
                 efficiencyScore: (avgUtil * stabilityScore) / 100,
                 isPrimary,
-                backupLsi: isPrimary ? `LSI-${1000 + idx + 1}` : undefined
+                backupLsi: isPrimary ? `LSI-${1000 + idx + 1}` : undefined,
+                temperature: 35 + Math.random() * 40,
+                duplex: Math.random() > 0.95 ? 'Half' : 'Full',
+                inErrorRate: idx % 15 === 0 ? Math.random() * 5 : Math.random() * 0.1,
+                inDiscardRate: idx % 20 === 0 ? Math.random() * 5 : Math.random() * 0.1,
+                linkStatusCode: Math.random() > 0.9 ? '404' : '200'
             };
         });
     }, [rawData]);
@@ -248,7 +258,23 @@ export function PerformanceDashboard() {
         return Object.entries(map).map(([name, value]) => ({ name, value: Math.round(value) })).sort((a, b) => b.value - a.value);
     }, [filteredData]);
 
-    // --- 12. HEATMAP DATA (REQ 12) ---
+    // --- 16. NOC PARAMETER HEALTH (NEW REQ) ---
+    const parameterHealthData = useMemo(() => {
+        const counts = {
+            'LINK STATE (DOWN)': filteredData.filter(d => d.linkState !== 'UP').length,
+            'CPU > 80%': filteredData.filter(d => d.cpu > 80).length,
+            'MEM > 80%': filteredData.filter(d => d.memory > 80).length,
+            'TEMP > 60°C': filteredData.filter(d => d.temperature > 60).length,
+            'HALF DUPLEX': filteredData.filter(d => d.duplex === 'Half').length,
+            'IN ERR RATE > 1': filteredData.filter(d => d.inErrorRate > 1).length,
+            'IN DISC RATE > 1': filteredData.filter(d => d.inDiscardRate > 1).length,
+            'UTIL > 80%': filteredData.filter(d => d.latestUtil > 80).length,
+            'STATUS CODE ERR': filteredData.filter(d => d.linkStatusCode !== '200').length,
+        };
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [filteredData]);
+
+    // --- HELPERS ---
     const heatmapData = useMemo(() => {
         // Mock 24 hours x 7 regions
         const hours = Array.from({ length: 24 }).map((_, i) => i);
@@ -358,6 +384,83 @@ export function PerformanceDashboard() {
                         <StatCard title="Sustained High Util" value={trendStats.sustainedHigh} icon={TrendingUp} sub="Links > 70% Over 24h" color="rose" onExport={() => exportToCSV(filteredData.filter(d => d.avgUtil > 70), 'Sustained_High_Utilization_Links')} />
                         <StatCard title="Growth Anomalies" value={trendStats.momGrowth} icon={Activity} sub="Rising trend + Critical Load" color="orange" onExport={() => exportToCSV(filteredData.filter(d => d.trend === 'Rising' && d.latestUtil > 80), 'Growth_Anomalies_Audit')} />
                         <StatCard title="Stability Rating" value="HIGH" icon={ShieldAlert} sub="92% Mean Consistency" color="emerald" onExport={() => exportToCSV(filteredData.map(d => ({ lsi: d.lsi, device: d.deviceName, stability: d.stabilityScore })), 'Link_Stability_Audit')} />
+                    </div>
+
+                    {/* New NOC Parameter Health Block */}
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm overflow-hidden group/noc-health relative">
+                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <Gauge size={120} />
+                        </div>
+                        <div className="flex items-center justify-between mb-8 relative z-10">
+                            <div className="flex flex-col gap-1">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-foreground flex items-center gap-2">
+                                    <ShieldAlert size={18} className="text-rose-500 animate-pulse" />
+                                    Operational Parameter Health Breakdown
+                                </h3>
+                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">Violation counts across critical NOC telemetry headers</p>
+                            </div>
+                            <button
+                                onClick={() => exportToCSV(parameterHealthData, 'Operational_Parameter_Health_Audit')}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground text-[10px] font-black uppercase tracking-widest transition-all border border-border/50"
+                            >
+                                <Download size={14} /> Export Health Audit
+                            </button>
+                        </div>
+
+                        <div className="h-[350px] relative z-10">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={parameterHealthData} layout="vertical" margin={{ left: 40, right: 40 }}>
+                                    <defs>
+                                        <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.8} />
+                                            <stop offset="100%" stopColor="#fb7185" stopOpacity={1} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={160}
+                                        tick={{ fontSize: 10, fontWeight: 900, fill: 'hsl(var(--muted-foreground))' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
+                                        contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px', fontWeight: 'bold' }}
+                                    />
+                                    <Bar
+                                        dataKey="value"
+                                        fill="url(#barGradient)"
+                                        barSize={24}
+                                        radius={[0, 10, 10, 0]}
+                                        onClick={(data) => {
+                                            const metric = data.name;
+                                            let exportData = [];
+                                            if (metric === 'LINK STATE (DOWN)') exportData = filteredData.filter(d => d.linkState !== 'UP');
+                                            if (metric === 'CPU > 80%') exportData = filteredData.filter(d => d.cpu > 80);
+                                            if (metric === 'MEM > 80%') exportData = filteredData.filter(d => d.memory > 80);
+                                            if (metric === 'TEMP > 60°C') exportData = filteredData.filter(d => d.temperature > 60);
+                                            if (metric === 'HALF DUPLEX') exportData = filteredData.filter(d => d.duplex === 'Half');
+                                            if (metric === 'IN ERR RATE > 1') exportData = filteredData.filter(d => d.inErrorRate > 1);
+                                            if (metric === 'IN DISC RATE > 1') exportData = filteredData.filter(d => d.inDiscardRate > 1);
+                                            if (metric === 'UTIL > 80%') exportData = filteredData.filter(d => d.latestUtil > 80);
+                                            if (metric === 'STATUS CODE ERR') exportData = filteredData.filter(d => d.linkStatusCode !== '200');
+                                            exportToCSV(exportData, `Links_Failing_${metric.replace(/\s+/g, '_')}`);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <LabelList
+                                            dataKey="value"
+                                            position="right"
+                                            style={{ fontSize: '12px', fontWeight: '900', fill: 'hsl(var(--foreground))' }}
+                                            formatter={(v: any) => `${v} ASSETS`}
+                                        />
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

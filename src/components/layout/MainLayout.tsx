@@ -1,9 +1,10 @@
 import { ReactNode, useState } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { ToolSidebar } from './ToolSidebar';
-import { User, SlidersHorizontal, LayoutGrid, Network } from 'lucide-react';
+import { User, SlidersHorizontal, LayoutGrid, Network, Sun, Moon } from 'lucide-react';
 import { useInventoryStore } from '@/store/inventoryStore';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/components/theme-provider';
 
 import { HeaderKPIs } from '../dashboard/HeaderKPIs';
 
@@ -14,6 +15,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { theme, setTheme } = useTheme();
   const {
     toolSidebarOpen,
     setToolSidebarOpen,
@@ -76,6 +78,31 @@ export function MainLayout({ children }: MainLayoutProps) {
                 showNetworkMetrics ? "text-emerald-600" : "text-muted-foreground"
               )}>
                 Network
+              </span>
+            </div>
+
+            {/* Theme Toggle */}
+            <div
+              className="flex items-center gap-2 cursor-pointer group select-none ml-2"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <div className={cn(
+                "w-9 h-5 rounded-full relative transition-colors duration-300 shadow-inner flex items-center px-1.5",
+                theme === 'dark' ? "bg-amber-500" : "bg-slate-200"
+              )}>
+                <div className={cn(
+                  "absolute top-1 left-1 bg-white h-3 w-3 rounded-full shadow-sm transition-all duration-300 flex items-center justify-center",
+                  theme === 'dark' ? "translate-x-4" : "translate-x-0"
+                )}>
+                  {theme === 'dark' ? <Sun size={8} className="text-amber-500" /> : <Moon size={8} className="text-slate-400" />}
+                </div>
+              </div>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
+                theme === 'dark' ? "text-amber-600" : "text-muted-foreground"
+              )}>
+                {theme === 'dark' ? 'Dark' : 'Light'}
               </span>
             </div>
 

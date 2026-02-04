@@ -81,34 +81,9 @@ export function MainLayout({ children }: MainLayoutProps) {
               </span>
             </div>
 
-            {/* Theme Toggle */}
-            <div
-              className="flex items-center gap-2 cursor-pointer group select-none ml-2"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <div className={cn(
-                "w-9 h-5 rounded-full relative transition-colors duration-300 shadow-inner flex items-center px-1.5",
-                theme === 'dark' ? "bg-amber-500" : "bg-slate-200"
-              )}>
-                <div className={cn(
-                  "absolute top-1 left-1 bg-white h-3 w-3 rounded-full shadow-sm transition-all duration-300 flex items-center justify-center",
-                  theme === 'dark' ? "translate-x-4" : "translate-x-0"
-                )}>
-                  {theme === 'dark' ? <Sun size={8} className="text-amber-500" /> : <Moon size={8} className="text-slate-400" />}
-                </div>
-              </div>
-              <span className={cn(
-                "text-[10px] font-black uppercase tracking-widest transition-colors",
-                theme === 'dark' ? "text-amber-600" : "text-muted-foreground"
-              )}>
-                {theme === 'dark' ? 'Dark' : 'Light'}
-              </span>
-            </div>
-
             {/* App Toggle */}
             <div
-              className="flex items-center gap-2 cursor-pointer group select-none mr-4"
+              className="flex items-center gap-2 cursor-pointer group select-none ml-2"
               onClick={toggleAppMetrics}
               title="Toggle Application Metrics"
             >
@@ -128,6 +103,20 @@ export function MainLayout({ children }: MainLayoutProps) {
                 Application
               </span>
             </div>
+
+            {/* Theme Toggle (Icon only) */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-xl transition-all ml-2",
+                theme === 'dark'
+                  ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                  : "bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10"
+              )}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? <Sun size={18} strokeWidth={2.5} /> : <Moon size={18} strokeWidth={2.5} />}
+            </button>
 
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors" title="NOC Admin">
               <User size={16} />

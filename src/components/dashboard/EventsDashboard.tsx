@@ -5,7 +5,7 @@ import { SuppressionLogicTable } from './SuppressionLogicTable';
 import { EventInterdependentPlots } from './EventInterdependentPlots';
 
 import { EventHeatmapWidget } from './EventHeatmapWidget';
-import { EventAnalyticalHeatmaps } from './EventAnalyticalHeatmaps';
+import { EventAgingHeatmap, EventClosureHeatmap } from './EventAnalyticalHeatmaps';
 import {
     Clock,
     Filter,
@@ -233,510 +233,338 @@ export function EventsDashboard() {
 
                     {/* Top KPIs */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={40} /></div>
+                        <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Activity size={32} /></div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Events</p>
-                            <p className="text-3xl font-black mt-1">917</p>
-                            <p className="text-[10px] text-emerald-500 font-bold mt-2">↑ 195 vs 24 hrs ago</p>
+                            <p className="text-2xl font-black mt-0.5">917</p>
+                            <p className="text-[9px] text-emerald-500 font-bold mt-1">↑ 195 vs 24 hrs ago</p>
                         </div>
-                        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Filter size={40} /></div>
+                        <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Filter size={32} /></div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Suppression Rate</p>
-                            <p className="text-3xl font-black mt-1">73%</p>
-                            <p className="text-[10px] text-muted-foreground mt-2">667/917 EVENTS SUPPRESSED</p>
+                            <p className="text-2xl font-black mt-0.5">73%</p>
+                            <p className="text-[9px] text-muted-foreground mt-1">667/917 EVENTS SUPPRESSED</p>
                         </div>
-                        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={40} /></div>
+                        <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={32} /></div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Business Hr Compliance</p>
-                            <p className="text-3xl font-black mt-1">81%</p>
-                            <p className="text-[10px] text-destructive font-bold mt-2">4297 TICKETS OUT OF BH</p>
+                            <p className="text-2xl font-black mt-0.5">81%</p>
+                            <p className="text-[9px] text-destructive font-bold mt-1">4297 TICKETS OUT OF BH</p>
                         </div>
-                        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={40} /></div>
+                        <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Zap size={32} /></div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">MTTR</p>
-                            <p className="text-3xl font-black mt-1">21 <span className="text-sm font-medium text-muted-foreground">min</span></p>
-                            <p className="text-[10px] text-emerald-500 font-bold mt-2">↓ 0.2% vs 30 Days</p>
+                            <p className="text-2xl font-black mt-0.5">21 <span className="text-sm font-medium text-muted-foreground">min</span></p>
+                            <p className="text-[9px] text-emerald-500 font-bold mt-1">↓ 0.2% vs 30 Days</p>
                         </div>
-                        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><AlertOctagon size={40} /></div>
+                        <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><AlertOctagon size={32} /></div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Critical Events</p>
-                            <p className="text-3xl font-black mt-1 text-destructive">179</p>
-                            <p className="text-[10px] text-muted-foreground mt-2">Requires Immediate Action</p>
+                            <p className="text-2xl font-black mt-0.5 text-destructive">179</p>
+                            <p className="text-[9px] text-muted-foreground mt-1">Requires Immediate Action</p>
                         </div>
                     </div>
 
-                    {/* Link Down Issues Grid (Compacted) */}
-                    <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm mb-3">
+                    {/* Link Down Issues Grid */}
+                    <div className="rounded-xl border border-border/50 bg-card p-3 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                 <Server size={14} className="text-primary" />
                                 Link Down Issues Breakdown
                             </h3>
-                            <div className="text-[10px] text-muted-foreground italic mr-2 border-l border-border pl-2">
-                                Click cloud icon on cards to export filtered details
-                            </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                             {dynamicLinkDownIssues.map((item, idx) => (
-                                <div
-                                    key={idx}
-                                    className={cn(
-                                        "p-2 rounded-lg border flex flex-col items-center justify-center text-center transition-all hover:scale-102 cursor-default min-h-[80px] relative group",
-                                        item.border,
-                                        item.bg
-                                    )}
-                                >
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCardExport(item);
-                                        }}
-                                        className="absolute top-1 right-1 p-1 rounded-full bg-background/50 hover:bg-background text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all shadow-sm"
-                                        title={`Export ${item.label} Data`}
-                                    >
-                                        <Download size={10} />
-                                    </button>
-
-                                    <p className={cn("text-xl font-black", item.color)}>{item.value}</p>
-                                    <p className="text-[10px] font-bold text-foreground leading-tight px-1">{item.label}</p>
-                                    <p className="text-[9px] text-muted-foreground opacity-80">{item.sub}</p>
+                                <div key={idx} className={cn("p-1.5 rounded-lg border flex flex-col items-center justify-center text-center min-h-[65px] relative group", item.border, item.bg)}>
+                                    <button onClick={(e) => { e.stopPropagation(); handleCardExport(item); }} className="absolute top-1 right-1 p-1 rounded-full bg-background/50 hover:bg-background opacity-0 group-hover:opacity-100 transition-all"><Download size={10} /></button>
+                                    <p className={cn("text-lg font-black", item.color)}>{item.value}</p>
+                                    <p className="text-[9px] font-bold text-foreground leading-tight px-1">{item.label}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Interdependent Event Analysis Plots */}
-                    <EventInterdependentPlots />
+                    {/* 1. Events Distribution by Business Hours */}
+                    <div className="w-full">
+                        <EventHeatmapWidget />
+                    </div>
 
+                    {/* 2 & 3. Aging and Closure Heatmaps */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <EventAgingHeatmap />
+                        <EventClosureHeatmap />
+                    </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Event Distribution Widget (Full Width) */}
-
-
-                        {/* Event Heatmap Widget (Also Full Width - User Requested "Assume as a widget") */}
-                        <div className="col-span-12">
-                            <EventHeatmapWidget />
+                    {/* 4. Events Lifecycle Diagram */}
+                    <div className="rounded-xl border border-border/50 bg-card/50 shadow-sm flex flex-col overflow-hidden">
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between bg-card">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                Events Lifecycle
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    73% Suppressed
+                                </span>
+                                <button
+                                    onClick={() => handleExport([
+                                        { Stage: 'Total Alarms', Count: 917 },
+                                        { Stage: 'Suppressed', Count: 667 },
+                                        { Stage: 'Actionable', Count: 250 },
+                                        { Stage: 'Ticketed', Count: 179 },
+                                        { Stage: 'Wrong SR', Count: 217 },
+                                        { Stage: 'Mail Triggered', Count: 71 }
+                                    ], 'Lifecycle_Flow')}
+                                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
+                                    title="Export CSV"
+                                >
+                                    <Download size={14} />
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Advanced Analytical Heatmaps (Aging & Closures) */}
-                        <div className="col-span-12">
-                            <EventAnalyticalHeatmaps />
+                        {/* Flow Diagram */}
+                        <div className="p-6 bg-gradient-to-br from-card to-background/50 overflow-x-auto">
+                            <div className="flex items-center min-w-[800px] gap-4">
+                                <div className="w-32 h-24 rounded-lg border border-sky-500/50 bg-sky-500/5 flex flex-col items-center justify-center p-2 relative shadow-[0_0_15px_rgba(14,165,233,0.1)]">
+                                    <span className="text-3xl font-black text-sky-500">917</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Total Alarms</span>
+                                </div>
+                                <ArrowRight className="text-muted-foreground/30 shrink-0" />
+                                <div className="flex flex-col gap-4">
+                                    <div className="w-48 p-3 rounded-lg border border-emerald-500/50 bg-emerald-500/5 relative group hover:bg-emerald-500/10 transition-colors text-center">
+                                        <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-emerald-500 text-emerald-500"><Activity size={10} /></div>
+                                        <span className="text-2xl font-black text-emerald-500">667</span>
+                                        <p className="text-[10px] font-bold text-emerald-500/80 uppercase mb-2">Suppressed/Grouped</p>
+                                        <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
+                                            <div className="h-full bg-emerald-500 w-[72.7%] rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                        </div>
+                                        <p className="text-[9px] font-bold text-emerald-500 text-right">72.7%</p>
+                                    </div>
+                                    <div className="w-48 p-3 rounded-lg border border-amber-500/50 bg-amber-500/5 relative group hover:bg-amber-500/10 transition-colors text-center">
+                                        <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-amber-500 text-amber-500"><Zap size={10} /></div>
+                                        <span className="text-2xl font-black text-amber-500">250</span>
+                                        <p className="text-[10px] font-bold text-amber-500/80 uppercase mb-2">Actionable Alarms</p>
+                                        <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
+                                            <div className="h-full bg-amber-500 w-[27.3%] rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
+                                        </div>
+                                        <p className="text-[9px] font-bold text-amber-500 text-right">27.3%</p>
+                                    </div>
+                                </div>
+                                <ArrowRight className="text-muted-foreground/30 shrink-0" />
+                                <div className="flex flex-col gap-4">
+                                    <div className="w-48 p-3 rounded-lg border border-cyan-500/50 bg-cyan-500/5 relative group hover:bg-cyan-500/10 transition-colors text-center">
+                                        <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-cyan-500 text-cyan-500"><Ticket size={10} /></div>
+                                        <span className="text-2xl font-black text-cyan-500">179</span>
+                                        <p className="text-[10px] font-bold text-cyan-500/80 uppercase mb-2">Ticket Created (SR)</p>
+                                        <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
+                                            <div className="h-full bg-cyan-500 w-[71.6%] rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+                                        </div>
+                                        <p className="text-[9px] font-bold text-cyan-500 text-right">71.6%</p>
+                                        <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-muted-foreground/30"><ArrowRight size={16} /></div>
+                                    </div>
+                                    <div className="w-48 p-3 rounded-lg border border-red-500/50 bg-red-500/5 relative group hover:bg-red-500/10 transition-colors text-center">
+                                        <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-red-500 text-red-500"><AlertCircle size={10} /></div>
+                                        <span className="text-2xl font-black text-red-500">217</span>
+                                        <p className="text-[10px] font-bold text-red-500/80 uppercase mb-1">Wrong SR</p>
+                                        <p className="text-[9px] text-muted-foreground">Invalid/Duplicate</p>
+                                    </div>
+                                </div>
+                                <div className="w-6"></div>
+                                <div className="w-36 h-24 rounded-lg border border-slate-500/50 bg-slate-500/5 flex flex-col items-center justify-center p-2 relative text-center">
+                                    <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-slate-500 text-slate-500"><Server size={10} /></div>
+                                    <span className="text-2xl font-black text-slate-400">71</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Mail Triggered</span>
+                                </div>
+                                <ArrowRight className="text-muted-foreground/30 shrink-0" />
+                                <div className="flex flex-col gap-4">
+                                    <div className="w-36 p-2 rounded-lg border border-orange-500/50 bg-orange-500/5 flex flex-col items-center justify-center">
+                                        <span className="text-xl font-black text-orange-500">238</span>
+                                        <span className="text-[9px] font-bold text-orange-500/80 uppercase">Timed Out</span>
+                                    </div>
+                                    <div className="w-36 p-2 rounded-lg border border-sky-500/50 bg-sky-500/5 flex flex-col items-center justify-center">
+                                        <span className="text-xl font-black text-sky-500">802</span>
+                                        <span className="text-[9px] font-bold text-sky-500/80 uppercase">In Progress</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Lifecycle Flow - Corporate Redesign V2 */}
-                        <div className="col-span-12 rounded-xl border border-border/50 bg-card/50 shadow-sm flex flex-col h-full overflow-hidden">
-                            {/* Header */}
-                            <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between bg-card">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    Events Lifecycle
-                                </h3>
-                                <div className="flex items-center gap-3">
-                                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        73% Suppressed
-                                    </span>
-                                    <button
-                                        onClick={() => handleExport([
-                                            { Stage: 'Total Alarms', Count: 917 },
-                                            { Stage: 'Suppressed', Count: 667 },
-                                            { Stage: 'Actionable', Count: 250 },
-                                            { Stage: 'Ticketed', Count: 179 },
-                                            { Stage: 'Wrong SR', Count: 217 },
-                                            { Stage: 'Mail Triggered', Count: 71 }
-                                        ], 'Lifecycle_Flow')}
-                                        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
-                                        title="Export CSV"
-                                    >
-                                        <Download size={14} />
-                                    </button>
+                        {/* Footer Stats */}
+                        <div className="grid grid-cols-4 divide-x divide-border/30 border-t border-border/50 bg-card/50">
+                            {[
+                                { val: '73%', label: 'Suppression Rate', color: 'text-emerald-500' },
+                                { val: '72%', label: 'Ticket Creation Rate', color: 'text-cyan-500' },
+                                { val: '87%', label: 'Wrong SR Rate', color: 'text-amber-500' },
+                                { val: '71', label: 'Mails Sent', color: 'text-sky-500' }
+                            ].map((s, i) => (
+                                <div key={i} className="p-3 text-center">
+                                    <p className={cn("text-xl font-black", s.color)}>{s.val}</p>
+                                    <p className="text-[9px] text-muted-foreground font-bold uppercase mt-1">{s.label}</p>
                                 </div>
-                            </div>
+                            ))}
+                        </div>
+                    </div>
 
-                            {/* Flow Diagram - Scrollable */}
-                            <div className="flex-1 overflow-x-auto p-6 bg-gradient-to-br from-card to-background/50">
-                                <div className="flex items-center min-w-[800px] gap-4">
-
-                                    {/* Step 1: Total */}
-                                    <div className="w-32 h-24 rounded-lg border border-sky-500/50 bg-sky-500/5 flex flex-col items-center justify-center p-2 relative shadow-[0_0_15px_rgba(14,165,233,0.1)]">
-                                        <span className="text-3xl font-black text-sky-500">917</span>
-                                        <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Total Alarms</span>
-                                    </div>
-
-                                    <ArrowRight className="text-muted-foreground/30 shrink-0" />
-
-                                    {/* Step 2: Split */}
-                                    <div className="flex flex-col gap-4">
-                                        {/* Suppressed */}
-                                        <div className="w-48 p-3 rounded-lg border border-emerald-500/50 bg-emerald-500/5 relative group hover:bg-emerald-500/10 transition-colors">
-                                            <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-emerald-500 text-emerald-500"><Activity size={10} /></div>
-                                            <div className="text-center">
-                                                <span className="text-2xl font-black text-emerald-500">667</span>
-                                                <p className="text-[10px] font-bold text-emerald-500/80 uppercase mb-2">Suppressed/Grouped</p>
-                                                <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
-                                                    <div className="h-full bg-emerald-500 w-[72.7%] rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                                </div>
-                                                <p className="text-[9px] font-bold text-emerald-500 text-right">72.7%</p>
-                                            </div>
-                                        </div>
-                                        {/* Actionable */}
-                                        <div className="w-48 p-3 rounded-lg border border-amber-500/50 bg-amber-500/5 relative group hover:bg-amber-500/10 transition-colors">
-                                            <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-amber-500 text-amber-500"><Zap size={10} /></div>
-                                            <div className="text-center">
-                                                <span className="text-2xl font-black text-amber-500">250</span>
-                                                <p className="text-[10px] font-bold text-amber-500/80 uppercase mb-2">Actionable Alarms</p>
-                                                <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
-                                                    <div className="h-full bg-amber-500 w-[27.3%] rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
-                                                </div>
-                                                <p className="text-[9px] font-bold text-amber-500 text-right">27.3%</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <ArrowRight className="text-muted-foreground/30 shrink-0" />
-
-                                    {/* Step 3: Tickets & Wrong */}
-                                    <div className="flex flex-col gap-4">
-                                        {/* Ticketed */}
-                                        <div className="w-48 p-3 rounded-lg border border-cyan-500/50 bg-cyan-500/5 relative group hover:bg-cyan-500/10 transition-colors">
-                                            <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-cyan-500 text-cyan-500"><Ticket size={10} /></div>
-                                            <div className="text-center">
-                                                <span className="text-2xl font-black text-cyan-500">179</span>
-                                                <p className="text-[10px] font-bold text-cyan-500/80 uppercase mb-2">Ticket Created (SR)</p>
-                                                <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-1">
-                                                    <div className="h-full bg-cyan-500 w-[71.6%] rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
-                                                </div>
-                                                <p className="text-[9px] font-bold text-cyan-500 text-right">71.6%</p>
-                                            </div>
-
-                                            {/* Arrow to next step (absolute positioned visual hack for clean flow) */}
-                                            <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-muted-foreground/30"><ArrowRight size={16} /></div>
-                                        </div>
-
-                                        {/* Wrong SR */}
-                                        <div className="w-48 p-3 rounded-lg border border-red-500/50 bg-red-500/5 relative group hover:bg-red-500/10 transition-colors">
-                                            <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-red-500 text-red-500"><AlertCircle size={10} /></div>
-                                            <div className="text-center">
-                                                <span className="text-2xl font-black text-red-500">217</span>
-                                                <p className="text-[10px] font-bold text-red-500/80 uppercase mb-1">Wrong SR</p>
-                                                <p className="text-[9px] text-muted-foreground">Invalid/Duplicate</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="w-6"></div> {/* Spacer for the absolute arrow above */}
-
-                                    {/* Step 4: Mail */}
-                                    <div className="w-36 h-24 rounded-lg border border-slate-500/50 bg-slate-500/5 flex flex-col items-center justify-center p-2 relative">
-                                        <div className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-card border border-slate-500 text-slate-500"><Server size={10} /></div>
-                                        <span className="text-2xl font-black text-slate-400">71</span>
-                                        <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1 text-center">Mail Triggered</span>
-                                    </div>
-
-                                    <ArrowRight className="text-muted-foreground/30 shrink-0" />
-
-                                    {/* Step 5: Final Status */}
-                                    <div className="flex flex-col gap-4">
-                                        <div className="w-36 p-2 rounded-lg border border-orange-500/50 bg-orange-500/5 flex flex-col items-center justify-center">
-                                            <span className="text-xl font-black text-orange-500">238</span>
-                                            <span className="text-[9px] font-bold text-orange-500/80 uppercase">Timed Out</span>
-                                        </div>
-                                        <div className="w-36 p-2 rounded-lg border border-sky-500/50 bg-sky-500/5 flex flex-col items-center justify-center">
-                                            <span className="text-xl font-black text-sky-500">802</span>
-                                            <span className="text-[9px] font-bold text-sky-500/80 uppercase">In Progress</span>
-                                        </div>
+                    {/* 5. Impact Intelligence (Full Row) */}
+                    <div className="w-full rounded-xl border border-border/50 bg-card p-0 shadow-sm overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
+                            <div className="flex items-center gap-4">
+                                {selectedRegion && <button onClick={() => setSelectedRegion(null)} className="p-1 hover:bg-muted rounded-full transition-colors"><ChevronLeft size={20} /></button>}
+                                <div className="space-y-0.5">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">Impact Intelligence</h3>
+                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                        <span>Events vs Links vs Regions</span>
+                                        {selectedRegion && <span className="font-bold text-primary"> &gt; {selectedRegion}</span>}
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Footer Stats */}
-                            <div className="grid grid-cols-4 divide-x divide-border/30 border-t border-border/50 bg-card/50">
-                                <div className="p-3 text-center">
-                                    <p className="text-xl font-black text-emerald-500">73%</p>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase mt-1">Suppression Rate</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex gap-2">
+                                    {[
+                                        { val: 917, label: 'Events', color: 'sky' },
+                                        { val: 136, label: 'Links', color: 'emerald' },
+                                        { val: 179, label: 'Critical', color: 'red' }
+                                    ].map((k, i) => (
+                                        <div key={i} className={cn("flex flex-col items-center px-3 py-1 border rounded-lg", `bg-${k.color}-500/10 border-${k.color}-500/20`)}>
+                                            <span className={cn("text-sm font-black", `text-${k.color}-500`)}>{k.val}</span>
+                                            <span className={cn("text-[8px] uppercase font-bold opacity-80", `text-${k.color}-500`)}>{k.label}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="p-3 text-center">
-                                    <p className="text-xl font-black text-cyan-500">72%</p>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase mt-1">Ticket Creation Rate</p>
-                                </div>
-                                <div className="p-3 text-center">
-                                    <p className="text-xl font-black text-amber-500">87%</p>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase mt-1">Wrong SR Rate</p>
-                                </div>
-                                <div className="p-3 text-center">
-                                    <p className="text-xl font-black text-sky-500">71</p>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase mt-1">Mails Sent</p>
+                                <div className="w-px h-8 bg-border/50 mx-1 mobile-hidden" />
+                                <div className="flex bg-muted rounded-lg p-1">
+                                    {(['overview', 'correlation', 'performance'] as const).map(view => (
+                                        <button key={view} onClick={() => setImpactView(view)} className={cn("px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1.5", impactView === view ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                                            <span className="hidden sm:inline">{view}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
+                        </div>
+                        <div className="h-[320px] w-full p-4 relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                {impactView === 'correlation' ? (
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                                        <XAxis type="number" dataKey="links" name="Links" tick={{ fontSize: 10 }} />
+                                        <YAxis type="number" dataKey="events" name="Events" tick={{ fontSize: 10 }} />
+                                        <ZAxis type="number" dataKey="critical" range={[100, 400]} />
+                                        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                        {IMPACT_DATA.map((region) => <Scatter key={region.name} name={region.name} data={region.cities || [region]} fill={region.color} />)}
+                                    </ScatterChart>
+                                ) : impactView === 'performance' ? (
+                                    <BarChart layout="vertical" data={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                                        <XAxis type="number" tick={{ fontSize: 10 }} />
+                                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fontWeight: 700 }} width={80} />
+                                        <Tooltip />
+                                        <Bar dataKey="events" name="Events" radius={[0, 4, 4, 0]} barSize={20}>
+                                            {IMPACT_DATA.map((entry, index) => <Cell key={`cell-${index}`} fill={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.color : entry.color} />)}
+                                        </Bar>
+                                        <Bar dataKey="mttr" name="Avg Resolution (min)" fill="#818cf8" radius={[0, 4, 4, 0]} barSize={20} />
+                                    </BarChart>
+                                ) : (
+                                    <ComposedChart data={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA} onClick={(e) => e?.activePayload && !selectedRegion && setSelectedRegion(e.activePayload[0].payload.name)}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                        <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                                        <Tooltip />
+                                        <Bar yAxisId="left" dataKey="events" name="Total Events" radius={[4, 4, 0, 0]} barSize={40}>
+                                            {(selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA)?.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={selectedRegion ? (IMPACT_DATA.find(r => r.name === selectedRegion)?.color) : entry.color} />)}
+                                        </Bar>
+                                        <Bar yAxisId="left" dataKey="critical" name="Critical Events" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
+                                        <Line yAxisId="right" type="monotone" dataKey="links" name="Active Links" stroke="#10b981" strokeWidth={3} />
+                                    </ComposedChart>
+                                )}
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="grid grid-cols-4 border-t border-border/50 divide-x divide-border/50 bg-muted/5">
+                            {IMPACT_DATA.map((region) => (
+                                <button key={region.name} onClick={() => setSelectedRegion(selectedRegion === region.name ? null : region.name)} className={cn("p-3 text-left transition-all hover:bg-muted/50 group relative overflow-hidden", selectedRegion === region.name ? "bg-muted shadow-inner" : "")}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: region.color }}></div>
+                                        <span className={cn("text-xs font-bold", selectedRegion === region.name ? "text-foreground" : "text-muted-foreground")}>{region.name}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-y-2 gap-x-1">
+                                        <div><p className="text-[10px] text-muted-foreground uppercase">Events</p><p className="text-sm font-black">{region.events}</p></div>
+                                        <div><p className="text-[10px] text-muted-foreground uppercase">Links</p><p className="text-sm font-bold text-emerald-500">{region.links}</p></div>
+                                        <div><p className="text-[10px] text-muted-foreground uppercase">Critical</p><p className="text-sm font-bold text-destructive">{region.critical}</p></div>
+                                        <div><p className="text-[10px] text-muted-foreground uppercase">Avg MTTR</p><p className="text-sm font-bold text-sky-500">{region.mttr}m</p></div>
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Impact Intelligence Advanced Widget */}
-                        <div className="col-span-12 lg:col-span-8 rounded-xl border border-border/50 bg-card p-0 shadow-sm overflow-hidden flex flex-col">
-                            {/* Header */}
-                            <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
-                                <div className="flex items-center gap-4">
-                                    {selectedRegion ? (
-                                        <button onClick={() => setSelectedRegion(null)} className="p-1 hover:bg-muted rounded-full transition-colors">
-                                            <ChevronLeft size={20} />
-                                        </button>
-                                    ) : null}
-                                    <div className="space-y-0.5">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                            Impact Intelligence
-                                        </h3>
-                                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                            <span>Events vs Links vs Regions</span>
-                                            {selectedRegion && <span className="font-bold text-primary"> &gt; {selectedRegion}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="flex gap-2">
-                                        <div className="flex flex-col items-center px-3 py-1 bg-sky-500/10 border border-sky-500/20 rounded-lg">
-                                            <span className="text-sm font-black text-sky-500">917</span>
-                                            <span className="text-[8px] uppercase font-bold text-sky-500 opacity-80">Events</span>
-                                        </div>
-                                        <div className="flex flex-col items-center px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                            <span className="text-sm font-black text-emerald-500">136</span>
-                                            <span className="text-[8px] uppercase font-bold text-emerald-500 opacity-80">Links</span>
-                                        </div>
-                                        <div className="flex flex-col items-center px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                            <span className="text-sm font-black text-red-500">179</span>
-                                            <span className="text-[8px] uppercase font-bold text-red-500 opacity-80">Critical</span>
-                                        </div>
-                                    </div>
-                                    <div className="w-px h-8 bg-border/50 mx-1 mobile-hidden" />
-                                    <div className="flex bg-muted rounded-lg p-1">
-                                        {(['overview', 'correlation', 'performance'] as const).map(view => (
-                                            <button
-                                                key={view}
-                                                onClick={() => setImpactView(view)}
-                                                className={cn(
-                                                    "px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1.5",
-                                                    impactView === view ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                                )}
-                                            >
-                                                {view === 'overview' && <Activity size={12} />}
-                                                {view === 'correlation' && <AlertOctagon size={12} />}
-                                                {view === 'performance' && <Zap size={12} />}
-                                                <span className="hidden sm:inline">{view}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Main Chart Area */}
-                            <div className="h-[320px] w-full p-4 relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    {impactView === 'correlation' ? (
-                                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                                            <XAxis type="number" dataKey="links" name="Links" label={{ value: 'Number of Links', position: 'bottom', offset: 0, fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tick={{ fontSize: 10 }} />
-                                            <YAxis type="number" dataKey="events" name="Events" label={{ value: 'Number of Events', angle: -90, position: 'left', offset: 0, fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tick={{ fontSize: 10 }} />
-                                            <ZAxis type="number" dataKey="critical" range={[100, 400]} name="Critical Events" />
-                                            <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-xs">
-                                                            <p className="font-bold mb-1" style={{ color: data.color }}>{data.name || data.city}</p>
-                                                            <p>Events: <span className="font-bold">{data.events}</span></p>
-                                                            <p>Links: <span className="font-bold">{data.links}</span></p>
-                                                            <p>Critical: <span className="font-bold text-red-500">{data.critical}</span></p>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }} />
-                                            <Legend />
-                                            {IMPACT_DATA.map((region) => (
-                                                <Scatter key={region.name} name={region.name} data={region.cities || [region]} fill={region.color} />
-                                            ))}
-                                        </ScatterChart>
-                                    ) : impactView === 'performance' ? (
-                                        <BarChart
-                                            layout="vertical"
-                                            data={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA}
-                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="hsl(var(--border))" opacity={0.3} />
-                                            <XAxis type="number" tick={{ fontSize: 10 }} />
-                                            <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fontWeight: 700 }} width={80} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }} />
-                                            <Legend />
-                                            <Bar dataKey="events" name="Events" radius={[0, 4, 4, 0]} barSize={20}>
-                                                {IMPACT_DATA.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.color : entry.color} />
-                                                ))}
-                                            </Bar>
-                                            <Bar dataKey="mttr" name="Avg Resolution (min)" fill="#818cf8" radius={[0, 4, 4, 0]} barSize={20} />
-                                        </BarChart>
-                                    ) : (
-                                        <ComposedChart
-                                            data={selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA}
-                                            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                                            onClick={(e) => {
-                                                if (e && e.activePayload && !selectedRegion) {
-                                                    setSelectedRegion(e.activePayload[0].payload.name);
-                                                }
-                                            }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                                            <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                                            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }} />
-                                            {!selectedRegion && <text x="50%" y="10" textAnchor="middle" fill="#666" fontSize="10">Click on a region bar to drill down</text>}
-                                            <Legend iconType="circle" />
-                                            <Bar yAxisId="left" dataKey="events" name="Total Events" radius={[4, 4, 0, 0]} barSize={40} cursor="pointer">
-                                                {(selectedRegion ? IMPACT_DATA.find(r => r.name === selectedRegion)?.cities : IMPACT_DATA)?.map((entry: any, index: number) => (
-                                                    <Cell key={`cell-${index}`} fill={selectedRegion ? (IMPACT_DATA.find(r => r.name === selectedRegion)?.color) : entry.color} opacity={0.9} />
-                                                ))}
-                                            </Bar>
-                                            <Bar yAxisId="left" dataKey="critical" name="Critical Events" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
-                                            <Line yAxisId="right" type="monotone" dataKey="links" name="Active Links" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                                        </ComposedChart>
-                                    )}
-                                </ResponsiveContainer>
-                            </div>
-
-                            {/* Footer Cards - Drill Down Selectors */}
-                            <div className="grid grid-cols-4 border-t border-border/50 divide-x divide-border/50 bg-muted/5">
-                                {IMPACT_DATA.map((region) => (
-                                    <button
-                                        key={region.name}
-                                        onClick={() => setSelectedRegion(selectedRegion === region.name ? null : region.name)}
-                                        className={cn(
-                                            "p-3 text-left transition-all hover:bg-muted/50 group relative overflow-hidden",
-                                            selectedRegion === region.name ? "bg-muted shadow-inner" : ""
-                                        )}
-                                    >
-                                        {selectedRegion === region.name && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: region.color }}></div>
-                                            <span className={cn("text-xs font-bold", selectedRegion === region.name ? "text-foreground" : "text-muted-foreground")}>{region.name}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-y-2 gap-x-1">
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Events</p>
-                                                <p className="text-sm font-black">{region.events}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Links</p>
-                                                <p className="text-sm font-bold text-emerald-500">{region.links}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Critical</p>
-                                                <p className="text-sm font-bold text-destructive">{region.critical}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Avg MTTR</p>
-                                                <p className="text-sm font-bold text-sky-500">{region.mttr}m</p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Suppression Reasons */}
-                        <div className="col-span-12 lg:col-span-4 rounded-xl border border-border/50 bg-card p-5 shadow-sm">
+                        {/* 6. Suppression Reasons (col-4) */}
+                        <div className="lg:col-span-4 rounded-xl border border-border/50 bg-card p-5 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Suppression Reasons</h3>
-                                <button onClick={() => handleExport(SUPPRESSION_DATA, 'Suppression_Reasons')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all" title="Export CSV">
-                                    <Download size={14} />
-                                </button>
+                                <button onClick={() => handleExport(SUPPRESSION_DATA, 'Suppression_Reasons')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"><Download size={14} /></button>
                             </div>
                             <div className="h-[200px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
-                                        <Pie
-                                            data={SUPPRESSION_DATA}
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {SUPPRESSION_DATA.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                            ))}
+                                        <Pie data={SUPPRESSION_DATA} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                            {SUPPRESSION_DATA.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />)}
                                         </Pie>
-                                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }} />
+                                        <Tooltip />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="space-y-3 mt-4">
-                                {SUPPRESSION_DATA.slice(0, 3).map((item) => (
-                                    <div key={item.name} className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                            <span className="text-muted-foreground font-medium">{item.name}</span>
-                                        </div>
-                                        <span className="font-bold">{item.value}</span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Trend Chart */}
-                        <div className="col-span-12 lg:col-span-7 rounded-xl border border-border/50 bg-card p-5 shadow-sm">
+                        {/* 7. Events Trend: Ticketed vs Suppressed (col-8) */}
+                        <div className="lg:col-span-8 rounded-xl border border-border/50 bg-card p-5 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Events Trend: Ticketed vs Suppressed</h3>
-                                <button onClick={() => handleExport(TREND_DATA, 'Events_Trend')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all" title="Export CSV">
-                                    <Download size={14} />
-                                </button>
+                                <button onClick={() => handleExport(TREND_DATA, 'Events_Trend')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"><Download size={14} /></button>
                             </div>
-                            <div className="h-[250px] w-full">
+                            <div className="h-[200px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={TREND_DATA}>
-                                        <defs>
-                                            <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                                        <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }} />
-                                        <Area type="monotone" dataKey="total" stackId="1" stroke="#0ea5e9" fill="url(#colorTotal)" />
-                                        <Area type="monotone" dataKey="suppressed" stackId="2" stroke="#f59e0b" fill="none" strokeWidth={2} />
-                                        <Area type="monotone" dataKey="ticketed" stackId="3" stroke="#10b981" fill="none" strokeWidth={2} />
+                                        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip />
+                                        <Area type="monotone" dataKey="total" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.1} />
+                                        <Area type="monotone" dataKey="suppressed" stroke="#f59e0b" fill="none" />
+                                        <Area type="monotone" dataKey="ticketed" stroke="#10b981" fill="none" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Events by Customer */}
-                        <div className="col-span-12 lg:col-span-5 rounded-xl border border-border/50 bg-card p-5 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Events by Customer</h3>
-                                <button onClick={() => handleExport(CUSTOMER_DATA, 'Events_By_Customer')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all" title="Export CSV">
-                                    <Download size={14} />
-                                </button>
-                            </div>
-                            <div className="space-y-4">
-                                {CUSTOMER_DATA.map((item) => (
-                                    <div key={item.name} className="space-y-1">
-                                        <div className="flex justify-between text-xs font-bold">
-                                            <span>{item.name}</span>
-                                            <span>{item.value}</span>
-                                        </div>
-                                        <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-1000"
-                                                style={{ width: `${(item.value / 160) * 100}%`, backgroundColor: item.color }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* 8. Events by Customer */}
+                    <div className="rounded-xl border border-border/50 bg-card p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Events by Customer</h3>
+                            <button onClick={() => handleExport(CUSTOMER_DATA, 'Events_By_Customer')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"><Download size={14} /></button>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {CUSTOMER_DATA.map((item) => (
+                                <div key={item.name} className="space-y-1">
+                                    <div className="flex justify-between text-xs font-bold">
+                                        <span>{item.name}</span>
+                                        <span>{item.value}</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(item.value / 160) * 100}%`, backgroundColor: item.color }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Remaining Plots (Others) */}
+                    <div className="pt-8 border-t border-border/50">
+                        {/* Interdependent Plots */}
+                        <EventInterdependentPlots />
                     </div>
 
                     {/* Operational Table - Enhanced Design */}

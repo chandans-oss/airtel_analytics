@@ -523,8 +523,7 @@ export function UnifiedMainDashboard() {
                         issueCount={stats.device.issues}
                         icon={Database}
                         onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('nodes');
+                            setSelectedModule('device_status_analytics');
                         }}
                         onIssuesClick={() => setView('issues')}
                         exportData={stats.device.data}
@@ -538,8 +537,7 @@ export function UnifiedMainDashboard() {
                         issueCount={stats.link.issues}
                         icon={Zap}
                         onClick={() => {
-                            setSelectedModule('inventory');
-                            setSelectedSubModule('links');
+                            setSelectedModule('link_status_analytics');
                         }}
                         onIssuesClick={() => setView('issues')}
                         exportData={stats.link.data}

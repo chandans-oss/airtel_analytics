@@ -12,7 +12,8 @@ import {
     ArrowUpRight,
     TrendingUp,
     ShieldCheck,
-    MousePointer2
+    MousePointer2,
+    LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -97,9 +98,9 @@ export function BandwidthAnalytics() {
                     </button>
                     <div className="h-6 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <div>
-                        <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">Bandwidth Intelligence Portal</h2>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">Bandwidth Analytics</h2>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60 flex items-center gap-2">
-                            Infrastructure Capacity • Traffic Distribution • Polling Diagnostics
+                            Capacity • Traffic Distribution • Polling Diagnostics
                         </p>
                     </div>
                 </div>
@@ -107,7 +108,7 @@ export function BandwidthAnalytics() {
 
             {/* KPI Cards / Diagnostic Boxes */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col justify-between min-h-[110px] shadow-sm relative overflow-hidden group hover:bg-primary/10 transition-all border-l-4 border-l-primary">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 flex flex-col justify-between min-h-[85px] shadow-sm relative overflow-hidden group hover:bg-primary/10 transition-all border-l-4 border-l-primary">
                     <div className="flex items-start justify-between">
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total WAN Links</p>
                         <Activity size={16} className="text-primary opacity-40" />
@@ -120,7 +121,7 @@ export function BandwidthAnalytics() {
                 </div>
 
                 <div className={cn(
-                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    "rounded-2xl border p-3 flex flex-col justify-between min-h-[85px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
                     filter === 'Polled' ? "bg-emerald-500/10 border-emerald-500 shadow-lg" : "bg-emerald-500/5 border-emerald-500/20"
                 )} onClick={() => setFilter('Polled')}>
                     <div className="flex items-start justify-between">
@@ -134,7 +135,7 @@ export function BandwidthAnalytics() {
                 </div>
 
                 <div className={cn(
-                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    "rounded-2xl border p-3 flex flex-col justify-between min-h-[85px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
                     filter === 'Not Polled' ? "bg-rose-500/10 border-rose-500 shadow-lg" : "bg-rose-500/5 border-rose-500/20"
                 )} onClick={() => setFilter('Not Polled')}>
                     <div className="flex items-start justify-between">
@@ -148,7 +149,7 @@ export function BandwidthAnalytics() {
                 </div>
 
                 <div className={cn(
-                    "rounded-2xl border p-4 flex flex-col justify-between min-h-[110px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
+                    "rounded-2xl border p-3 flex flex-col justify-between min-h-[85px] shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group border-l-4",
                     filter === 'High Util' ? "bg-amber-500/10 border-amber-500 shadow-lg" : "bg-amber-500/5 border-amber-500/20"
                 )} onClick={() => setFilter('High Util')}>
                     <div className="flex items-start justify-between">
@@ -159,6 +160,63 @@ export function BandwidthAnalytics() {
                     <div className="flex items-center gap-1 text-[9px] text-amber-700 font-bold mt-1 uppercase tracking-tighter">
                         <Activity size={10} /> &gt;80% Utilization
                     </div>
+                </div>
+            </div>
+
+            {/* Issues Breakdown Section */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <LayoutGrid size={18} className="text-primary" />
+                        <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Bandwidth Performance Issues</h3>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
+                        Diagnostics for Link Capacity & Traffic Health
+                    </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                        { label: 'Critical Congestion', desc: '(Utilization > 90%)', color: 'rose', type: 'High Util' },
+                        { label: 'Polling Health', desc: '(SNMP/ICMP Failure)', color: 'orange', type: 'Not Polled' },
+                        { label: 'Latency Breach', desc: '(Delay > 100ms)', color: 'amber', type: 'Latency' },
+                        { label: 'Silent Link', desc: '(No traffic detected)', color: 'blue', type: 'Silent' },
+                        { label: 'MIB Timeout', desc: '(Diagnostic failure)', color: 'purple', type: 'MIB' }
+                    ].map((item) => {
+                        let exportData = [];
+                        if (item.type === 'High Util') exportData = BANDWIDTH_DATA.filter(d => d.utilization > 90);
+                        else if (item.type === 'Not Polled') exportData = BANDWIDTH_DATA.filter(d => d.status === 'Not Polled');
+                        else exportData = BANDWIDTH_DATA.slice(0, Math.floor(Math.random() * 10) + 1); // Sample for simulated categories
+
+                        const count = item.type === 'High Util' || item.type === 'Not Polled' ? exportData.length : Math.floor(Math.random() * 10);
+
+                        return (
+                            <div
+                                key={item.label}
+                                className={cn(
+                                    "flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer hover:shadow-md relative group/card min-h-[90px]",
+                                    `bg-${item.color}-500/5 border-${item.color}-500/20`
+                                )}
+                                onClick={() => {
+                                    if (item.type === 'High Util') setFilter('High Util');
+                                    else if (item.type === 'Not Polled') setFilter('Not Polled');
+                                }}
+                            >
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        exportToCSV(exportData, `Bandwidth_${item.label.replace(/\s+/g, '_')}_Issues`);
+                                    }}
+                                    className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-foreground/10 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    title="Export these issues"
+                                >
+                                    <Download size={12} className={cn(`text-${item.color}-600`)} />
+                                </button>
+                                <span className={cn("text-xl font-black", `text-${item.color}-600`)}>{count}</span>
+                                <span className={cn("text-[10px] font-black uppercase tracking-tight text-center", `text-${item.color}-700`)}>{item.label}</span>
+                                <span className="text-[8px] text-muted-foreground font-medium text-center opacity-70 mt-0.5">{item.desc}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -182,9 +240,9 @@ export function BandwidthAnalytics() {
                         </button>
                     </div>
 
-                    <div className="h-[280px] w-full relative">
+                    <div className="h-[340px] w-full relative">
                         {/* Center Content Overlaid on Donut */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 -translate-y-6">
                             <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] leading-none mb-1">Total</span>
                             <span className="text-4xl font-black text-foreground tabular-nums drop-shadow-sm">{stats.notPolled}</span>
                             <span className="text-[10px] font-black text-rose-500/80 uppercase tracking-widest mt-1">Failures</span>
@@ -204,8 +262,8 @@ export function BandwidthAnalytics() {
                                     data={issueData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={75}
-                                    outerRadius={95}
+                                    innerRadius={70}
+                                    outerRadius={90}
                                     paddingAngle={8}
                                     dataKey="value"
                                     animationBegin={0}
@@ -237,7 +295,7 @@ export function BandwidthAnalytics() {
                                 />
                                 <Legend
                                     verticalAlign="bottom"
-                                    height={40}
+                                    height={80}
                                     iconType="circle"
                                     content={({ payload }) => (
                                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">

@@ -9,6 +9,8 @@ import { UnifiedMainDashboard } from '@/components/dashboard/UnifiedMainDashboar
 import { BandwidthAnalytics } from '@/components/dashboard/BandwidthAnalytics';
 import { JitterAnalytics } from '@/components/dashboard/JitterAnalytics';
 import { QosAnalytics } from '@/components/dashboard/QosAnalytics';
+import { DeviceStatusAnalytics } from '@/components/dashboard/DeviceStatusAnalytics';
+import { LinkStatusAnalytics } from '@/components/dashboard/LinkStatusAnalytics';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessingOverlay } from '@/components/data/ProcessingOverlay';
 import { useInventoryStore } from '@/store/inventoryStore';
@@ -35,6 +37,14 @@ const Index = () => {
 
     if (module === 'qos') {
       return <QosAnalytics />;
+    }
+
+    if (module === 'device_status_analytics') {
+      return <DeviceStatusAnalytics />;
+    }
+
+    if (module === 'link_status_analytics') {
+      return <LinkStatusAnalytics />;
     }
 
     if (['inventory', 'events', 'config', 'filteredevents', 'filteredconfig'].includes(module)) {

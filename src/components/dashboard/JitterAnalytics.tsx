@@ -15,7 +15,8 @@ import {
     ArrowUpDown,
     Network,
     Gauge,
-    Timer
+    Timer,
+    LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -98,7 +99,7 @@ export function JitterAnalytics() {
                     </button>
                     <div className="h-6 w-1 bg-primary rounded-full shadow-[0_0_8px_rgba(0,165,142,0.4)]" />
                     <div>
-                        <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">Jitter & Stability Diagnostics</h2>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-foreground/90">Jitter Analytics</h2>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">Variance Analysis • Latency Spikes • SLA Compliance</p>
                     </div>
                 </div>
@@ -106,7 +107,7 @@ export function JitterAnalytics() {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm relative overflow-hidden">
+                <div className="rounded-xl border border-border bg-card p-3 flex items-center justify-between shadow-sm relative overflow-hidden min-h-[85px]">
                     <div className="absolute top-0 right-0 p-2 opacity-5"><Activity size={40} /></div>
                     <div>
                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Monitored Segments</p>
@@ -115,7 +116,7 @@ export function JitterAnalytics() {
                     <div className="p-3 bg-primary/10 rounded-xl text-primary"><Gauge size={24} /></div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Polled' && "ring-2 ring-emerald-500/50 border-emerald-500/30 shadow-lg")} onClick={() => setFilter('Polled')}>
+                <div className={cn("rounded-xl border border-border bg-card p-3 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group min-h-[85px]", filter === 'Polled' && "ring-2 ring-emerald-500/50 border-emerald-500/30 shadow-lg")} onClick={() => setFilter('Polled')}>
                     <div>
                         <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1 italic">Stability Health</p>
                         <p className="text-3xl font-black text-emerald-600">{stats.polled}</p>
@@ -124,7 +125,7 @@ export function JitterAnalytics() {
                     <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><ShieldAlert size={24} /></div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'Not Polled' && "ring-2 ring-red-500/50 border-red-500/30 shadow-lg")} onClick={() => setFilter('Not Polled')}>
+                <div className={cn("rounded-xl border border-border bg-card p-3 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group min-h-[85px]", filter === 'Not Polled' && "ring-2 ring-red-500/50 border-red-500/30 shadow-lg")} onClick={() => setFilter('Not Polled')}>
                     <div>
                         <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1 italic">Polling Gaps</p>
                         <p className="text-3xl font-black text-destructive">{stats.notPolled}</p>
@@ -133,13 +134,61 @@ export function JitterAnalytics() {
                     <div className="p-3 bg-red-500/10 rounded-xl text-destructive group-hover:bg-red-500 group-hover:text-white transition-colors"><AlertTriangle size={24} /></div>
                 </div>
 
-                <div className={cn("rounded-xl border border-border bg-card p-4 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group", filter === 'SLA Violation' && "ring-2 ring-amber-500/50 border-amber-500/30 shadow-lg")} onClick={() => setFilter('SLA Violation')}>
+                <div className={cn("rounded-xl border border-border bg-card p-3 flex items-center justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group min-h-[85px]", filter === 'SLA Violation' && "ring-2 ring-amber-500/50 border-amber-500/30 shadow-lg")} onClick={() => setFilter('SLA Violation')}>
                     <div>
                         <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1 italic">SLA Violations</p>
                         <p className="text-3xl font-black text-amber-600">{stats.slaViolations}</p>
                         <div className="flex items-center gap-1 text-[9px] text-amber-700 font-bold mt-1 uppercase tracking-tighter"><Timer size={10} /> High Jitter (&gt;30ms)</div>
                     </div>
                     <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors"><ShieldAlert size={24} /></div>
+                </div>
+            </div>
+
+            {/* Issues Breakdown Section */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <LayoutGrid size={18} className="text-primary" />
+                        <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Jitter & Stability Inhibitors</h3>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider opacity-60">
+                        Stability Diagnostics & Telemetry Gaps
+                    </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                        { label: 'MDT Timeout', desc: '(Telemetry stream loss)', color: 'rose', issue: 'MDT Timeout' },
+                        { label: 'SLA Violation', desc: '(High Jitter > 30ms)', color: 'orange', issue: 'SLA Violation' },
+                        { label: 'Ping Fail', desc: '(ICMP reachability)', color: 'amber', issue: 'Ping Fail' },
+                        { label: 'Packet Out-order', desc: '(Sequence mismatch)', color: 'blue', issue: 'Packet Out-order' }
+                    ].map((item) => {
+                        const issueData = JITTER_DATA.filter(d => d.issue === item.issue);
+                        const count = issueData.length;
+                        return (
+                            <div
+                                key={item.label}
+                                className={cn(
+                                    "flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer hover:shadow-md relative group/card min-h-[90px]",
+                                    `bg-${item.color}-500/5 border-${item.color}-500/20`
+                                )}
+                                onClick={() => setFilter(item.issue)}
+                            >
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        exportToCSV(issueData, `Jitter_${item.label.replace(/\s+/g, '_')}_Issues`);
+                                    }}
+                                    className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-foreground/10 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                    title="Export these issues"
+                                >
+                                    <Download size={12} className={cn(`text-${item.color}-600`)} />
+                                </button>
+                                <span className={cn("text-xl font-black", `text-${item.color}-600`)}>{count}</span>
+                                <span className={cn("text-[10px] font-black uppercase tracking-tight text-center", `text-${item.color}-700`)}>{item.label}</span>
+                                <span className="text-[8px] text-muted-foreground font-medium text-center opacity-70 mt-0.5">{item.desc}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -270,6 +319,6 @@ export function JitterAnalytics() {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

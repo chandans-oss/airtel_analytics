@@ -132,17 +132,13 @@ function HeatmapCell({ count, onClick, intensityLimit = [2, 6, 10], colorType = 
     );
 }
 
-export function EventAnalyticalHeatmaps() {
+export function EventAgingHeatmap() {
     const [selectedAging, setSelectedAging] = useState<any>(null);
-    const [selectedClosed, setSelectedClosed] = useState<any>(null);
     const [agingTimeRange, setAgingTimeRange] = useState('All');
-    const [closedTimeRange, setClosedTimeRange] = useState('All');
-
     const TIME_OPTIONS = ['1 Week', '1 Month', '3 Months', '6 Months', '1 Year', 'All'];
 
     return (
-        <div className="space-y-6">
-            {/* 1. Event Aging Summary Heatmap */}
+        <>
             <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm flex flex-col h-full bg-gradient-to-br from-card to-background/50">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -221,7 +217,88 @@ export function EventAnalyticalHeatmaps() {
                 </div>
             </div>
 
-            {/* 2. Event Closed Per Time Heatmap */}
+            <Dialog open={!!selectedAging} onOpenChange={(o) => !o && setSelectedAging(null)}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur pb-4 border-b">
+                        <DialogTitle className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setSelectedAging(null)}
+                                    className="p-1.5 hover:bg-muted rounded-full transition-colors"
+                                    title="Go Back"
+                                >
+                                    <ArrowLeft size={16} />
+                                </button>
+                                <span className="flex items-center gap-2">
+                                    <History size={18} className="text-indigo-500" />
+                                    Aging Details: {selectedAging?.region} - {selectedAging?.bucket}
+                                </span>
+                            </span>
+                            <button
+                                onClick={() => exportToCSV(selectedAging?.details || [], `Aging_Details_${selectedAging?.region}_${selectedAging?.bucket}`)}
+                                className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 rounded border border-border hover:shadow-sm transition-all text-xs font-bold text-primary"
+                            >
+                                <Download size={14} /> Export CSV
+                            </button>
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50">
+                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Severity Split</h4>
+                            <div className="h-[200px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Critical', value: selectedAging?.details.filter((d: any) => d.severity === 'Critical').length || 0 },
+                                                { name: 'Major', value: selectedAging?.details.filter((d: any) => d.severity === 'Major').length || 0 }
+                                            ]}
+                                            dataKey="value"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                        >
+                                            <Cell fill="#ef4444" />
+                                            <Cell fill="#f59e0b" />
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50 overflow-hidden flex flex-col">
+                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Top Customers Involved</h4>
+                            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                {selectedAging?.details.map((item: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between p-2 rounded bg-card border border-border/50 text-xs">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold">{item.customer}</span>
+                                            <span className="text-[8px] text-muted-foreground uppercase">{item.severity}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded font-black whitespace-nowrap">
+                                                {item.preciseTime} AGED
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
+export function EventClosureHeatmap() {
+    const [selectedClosed, setSelectedClosed] = useState<any>(null);
+    const [closedTimeRange, setClosedTimeRange] = useState('All');
+    const TIME_OPTIONS = ['1 Week', '1 Month', '3 Months', '6 Months', '1 Year', 'All'];
+
+    return (
+        <>
             <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm flex flex-col h-full bg-gradient-to-br from-card to-background/50">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -301,80 +378,6 @@ export function EventAnalyticalHeatmaps() {
                 </div>
             </div>
 
-            {/* Aging Detail Modal */}
-            <Dialog open={!!selectedAging} onOpenChange={(o) => !o && setSelectedAging(null)}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur pb-4 border-b">
-                        <DialogTitle className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setSelectedAging(null)}
-                                    className="p-1.5 hover:bg-muted rounded-full transition-colors"
-                                    title="Go Back"
-                                >
-                                    <ArrowLeft size={16} />
-                                </button>
-                                <span className="flex items-center gap-2">
-                                    <History size={18} className="text-indigo-500" />
-                                    Aging Details: {selectedAging?.region} - {selectedAging?.bucket}
-                                </span>
-                            </span>
-                            <button
-                                onClick={() => exportToCSV(selectedAging.details, `Aging_Details_${selectedAging.region}_${selectedAging.bucket}`)}
-                                className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 rounded border border-border hover:shadow-sm transition-all text-xs font-bold text-primary"
-                            >
-                                <Download size={14} /> Export CSV
-                            </button>
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50">
-                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Severity Split</h4>
-                            <div className="h-[200px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Critical', value: selectedAging?.details.filter((d: any) => d.severity === 'Critical').length || 0 },
-                                                { name: 'Major', value: selectedAging?.details.filter((d: any) => d.severity === 'Major').length || 0 }
-                                            ]}
-                                            dataKey="value"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                        >
-                                            <Cell fill="#ef4444" />
-                                            <Cell fill="#f59e0b" />
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50 overflow-hidden flex flex-col">
-                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Top Customers Involved</h4>
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                {selectedAging?.details.map((item: any, i: number) => (
-                                    <div key={i} className="flex items-center justify-between p-2 rounded bg-card border border-border/50 text-xs">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold">{item.customer}</span>
-                                            <span className="text-[8px] text-muted-foreground uppercase">{item.severity}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded font-black whitespace-nowrap">
-                                                {item.preciseTime} AGED
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Closure Detail Modal */}
             <Dialog open={!!selectedClosed} onOpenChange={(o) => !o && setSelectedClosed(null)}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur pb-4 border-b">
@@ -393,7 +396,7 @@ export function EventAnalyticalHeatmaps() {
                                 </span>
                             </span>
                             <button
-                                onClick={() => exportToCSV(selectedClosed.details, `Closure_Analytics_${selectedClosed.day}_${selectedClosed.hour}`)}
+                                onClick={() => exportToCSV(selectedClosed?.details || [], `Closure_Analytics_${selectedClosed?.day}_${selectedClosed?.hour}`)}
                                 className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 rounded border border-border hover:shadow-sm transition-all text-xs font-bold text-primary"
                             >
                                 <Download size={14} /> Export CSV
@@ -417,7 +420,7 @@ export function EventAnalyticalHeatmaps() {
                                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
                                         <Bar dataKey="val" radius={[4, 4, 0, 0]} barSize={40}>
-                                            {selectedClosed?.details && [
+                                            {[
                                                 { severity: 'Critical', color: '#ef4444' },
                                                 { severity: 'Major', color: '#f59e0b' },
                                                 { severity: 'Minor', color: '#0ea5e9' }
@@ -448,6 +451,6 @@ export function EventAnalyticalHeatmaps() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 }

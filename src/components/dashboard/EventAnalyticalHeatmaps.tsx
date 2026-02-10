@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Download, Clock, Calendar, ArrowRight, ShieldCheck, History, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { exportToCSV } from '@/utils/exportUtils';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // --- DATA DEFINITIONS ---
 
@@ -59,35 +59,42 @@ const generateAgingData = () => {
     return data;
 };
 
-const generateClosedData = () => {
-    const data = [];
-    for (const day of DAYS) {
-        for (let hour = 0; hour < 24; hour++) {
-            // Closures happen more during business hours (8-18)
-            let prob = 0.3;
-            if (hour >= 9 && hour <= 17) prob = 0.8;
+const AGING_DATA = generateAgingData();
 
-            const count = Math.random() < prob ? (Math.floor(Math.random() * 7) + 1) : 0;
+// --- NEW RAW DATA GENERATOR FOR CLOSURE TIMELINES ---
+const generateRawClosureData = () => {
+    return Array.from({ length: 1500 }).map((_, i) => {
+        // Create a realistic distribution: many fast closures, some medium, fewer long
+        const rand = Math.random();
+        let durationMinutes;
 
-            data.push({
-                day,
-                hour,
-                count,
-                details: Array.from({ length: count }).map((_, i) => ({
-                    id: `EVT-CLS-${day}-${hour}-${i}`,
-                    customer: `Customer_${Math.floor(Math.random() * 20)}`,
-                    resolution: ['Auto-Resolved', 'Manual Fix', 'Provider Action'][Math.floor(Math.random() * 3)],
-                    severity: ['Critical', 'Major', 'Minor'][Math.floor(Math.random() * 3)],
-                    timeToClose: `${Math.floor(Math.random() * 120)}m`
-                }))
-            });
+        if (rand < 0.45) {
+            // Fast: 1-15 mins
+            durationMinutes = Math.floor(Math.random() * 15) + 1;
+        } else if (rand < 0.75) {
+            // Medium: 15-60 mins
+            durationMinutes = Math.floor(Math.random() * 45) + 15;
+        } else if (rand < 0.9) {
+            // Slow: 1-4 hours
+            durationMinutes = Math.floor(Math.random() * 180) + 60;
+        } else if (rand < 0.98) {
+            // Very Slow: 4-24 hours
+            durationMinutes = Math.floor(Math.random() * 1200) + 240;
+        } else {
+            // Stuck: > 1 day
+            durationMinutes = Math.floor(Math.random() * 5000) + 1440;
         }
-    }
-    return data;
+
+        return {
+            id: `EVT-RAW-${i}`,
+            durationMinutes,
+            vendor: ['Ericsson', 'Nokia', 'Huawei', 'Cisco'][Math.floor(Math.random() * 4)],
+            severity: ['Critical', 'Major', 'Minor'][Math.floor(Math.random() * 3)],
+        };
+    });
 };
 
-const AGING_DATA = generateAgingData();
-const CLOSED_DATA = generateClosedData();
+const RAW_CLOSURE_DATA = generateRawClosureData();
 
 // --- SUB-COMPONENTS ---
 
@@ -108,7 +115,19 @@ function HeatmapCell({ count, onClick, intensityLimit = [2, 6, 10], colorType = 
             'bg-muted/10 border-transparent',
             'bg-emerald-500/20 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/30',
             'bg-teal-500/30 border-teal-500/40 text-teal-500 hover:bg-teal-500/40',
-            'bg-cyan-500/40 border-cyan-500/50 text-cyan-500 hover:bg-cyan-500/50',
+            'bg-green-600/40 border-green-600/50 text-green-600 hover:bg-green-600/50',
+        ],
+        amber: [
+            'bg-muted/10 border-transparent',
+            'bg-amber-500/20 border-amber-500/30 text-amber-500 hover:bg-amber-500/30',
+            'bg-orange-500/30 border-orange-500/40 text-orange-500 hover:bg-orange-500/40',
+            'bg-yellow-600/40 border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/50',
+        ],
+        rose: [
+            'bg-muted/10 border-transparent',
+            'bg-rose-500/20 border-rose-500/30 text-rose-500 hover:bg-rose-500/30',
+            'bg-red-500/30 border-red-500/40 text-red-500 hover:bg-red-500/40',
+            'bg-red-700/40 border-red-700/50 text-red-700 hover:bg-red-700/50',
         ]
     };
 
@@ -293,164 +312,217 @@ export function EventAgingHeatmap() {
 }
 
 export function EventClosureHeatmap() {
-    const [selectedClosed, setSelectedClosed] = useState<any>(null);
-    const [closedTimeRange, setClosedTimeRange] = useState('All');
-    const TIME_OPTIONS = ['1 Week', '1 Month', '3 Months', '6 Months', '1 Year', 'All'];
+    // Configuration State
+    const [intervalValue, setIntervalValue] = useState<number>(15);
+    const [intervalUnit, setIntervalUnit] = useState<'Minutes' | 'Hours' | 'Days'>('Minutes');
+
+    // Derived Data Calculation
+    const chartData = useMemo(() => {
+        const multiplier = intervalUnit === 'Hours' ? 60 : intervalUnit === 'Days' ? 1440 : 1;
+        const bucketSize = intervalValue * multiplier;
+
+        const buckets: Record<string, { name: string, rangeStart: number, count: number, critical: number, major: number }> = {};
+
+        // Dynamic aggregations
+        RAW_CLOSURE_DATA.forEach(evt => {
+            const bucketIndex = Math.floor(evt.durationMinutes / bucketSize);
+            const rangeStart = bucketIndex * bucketSize;
+            const rangeEnd = (bucketIndex + 1) * bucketSize;
+
+            // Format Label
+            let label = '';
+            if (intervalUnit === 'Minutes') {
+                label = `${rangeStart}-${rangeEnd}m`;
+            } else if (intervalUnit === 'Hours') {
+                label = `${(rangeStart / 60).toFixed(1)}-${(rangeEnd / 60).toFixed(1)}h`;
+            } else {
+                label = `${(rangeStart / 1440).toFixed(1)}-${(rangeEnd / 1440).toFixed(1)}d`;
+            }
+
+            // Cap the long tail 
+            let bucketKey = label;
+            let sortOrder = bucketIndex;
+
+            // Group tail if too long (optional, keeping simple for now)
+            if (bucketIndex >= 15) {
+                const limitVal = 15 * intervalValue;
+                bucketKey = `> ${limitVal} ${intervalUnit}`;
+                sortOrder = 999;
+            }
+
+            if (!buckets[bucketKey]) {
+                buckets[bucketKey] = { name: bucketKey, rangeStart: sortOrder, count: 0, critical: 0, major: 0 };
+            }
+
+            buckets[bucketKey].count++;
+            if (evt.severity === 'Critical') buckets[bucketKey].critical++;
+            if (evt.severity === 'Major') buckets[bucketKey].major++;
+        });
+
+        return Object.values(buckets).sort((a, b) => a.rangeStart - b.rangeStart);
+    }, [intervalValue, intervalUnit]);
 
     return (
-        <>
-            <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm flex flex-col h-full bg-gradient-to-br from-card to-background/50">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                            <ShieldCheck size={20} />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-foreground">Event Closure Efficiency Monitor</h3>
-                            <p className="text-[10px] text-muted-foreground font-medium">Resolutions Pattern by Hour vs Day</p>
-                        </div>
+        <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm flex flex-col h-full bg-gradient-to-br from-card to-background/50 relative overflow-hidden">
+            {/* Header Section */}
+            <div className="flex items-center justify-between mb-6 z-10 relative">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                        <ShieldCheck size={20} />
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="relative flex items-center gap-2 px-3 py-1.5 bg-card border border-border/50 rounded-lg text-[10px] font-black uppercase tracking-wider text-muted-foreground hover:border-primary/30 transition-all cursor-pointer group">
-                            <Calendar size={12} className="text-primary" />
-                            <select
-                                className="bg-transparent border-none outline-none cursor-pointer appearance-none pr-4"
-                                value={closedTimeRange}
-                                onChange={(e) => setClosedTimeRange(e.target.value)}
-                            >
-                                {TIME_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-card text-foreground">{opt}</option>)}
-                            </select>
-                            <ChevronDown size={10} className="absolute right-2 pointer-events-none group-hover:text-primary transition-colors" />
-                        </div>
-                        <button
-                            onClick={() => exportToCSV(CLOSED_DATA.flatMap(d => d.details), 'Event_Closures_Full_Report')}
-                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all"
-                        >
-                            <Download size={14} />
-                        </button>
+                    <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-foreground">Event Closure Efficiency</h3>
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                            Distribution of Resolution Times (Interval: {intervalValue} {intervalUnit})
+                        </p>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-x-auto">
-                    <div className="min-w-[800px] flex flex-col gap-1">
-                        <div className="flex gap-1 ml-12 mb-2">
-                            {Array.from({ length: 24 }).map((_, i) => (
-                                <div key={i} className="flex-1 text-center text-[9px] font-bold text-muted-foreground">{i}</div>
-                            ))}
-                        </div>
-                        {DAYS.map(day => (
-                            <div key={day} className="flex gap-1 items-center h-8">
-                                <div className="w-12 text-[10px] font-bold text-muted-foreground uppercase pr-3 text-right">{day}</div>
-                                {Array.from({ length: 24 }).map((_, hour) => {
-                                    const cell = CLOSED_DATA.find(d => d.day === day && d.hour === hour);
-                                    return (
-                                        <HeatmapCell
-                                            key={`${day}-${hour}`}
-                                            count={cell?.count || 0}
-                                            onClick={() => cell?.count && setSelectedClosed(cell)}
-                                            intensityLimit={[1, 3, 5]}
-                                            colorType="emerald"
-                                        />
-                                    );
-                                })}
+                {/* Configuration Controls */}
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-muted/30 rounded-lg border border-border/50 p-1">
+                        <div className="flex items-center px-2 gap-2 border-r border-border/50">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Interval:</span>
+                            <div className="relative flex items-center">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="1440"
+                                    list="interval-presets"
+                                    value={intervalValue}
+                                    onChange={(e) => setIntervalValue(Number(e.target.value) || 1)}
+                                    className="w-12 bg-transparent text-xs font-bold text-right outline-none text-primary appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <datalist id="interval-presets">
+                                    {[5, 10, 15, 20, 30, 60].map((v) => (
+                                        <option key={v} value={v} />
+                                    ))}
+                                </datalist>
                             </div>
-                        ))}
+                        </div>
+                        <div className="flex items-center px-1">
+                            <select
+                                value={intervalUnit}
+                                onChange={(e) => setIntervalUnit(e.target.value as any)}
+                                className="bg-transparent text-[10px] font-bold uppercase text-muted-foreground outline-none cursor-pointer hover:text-primary transition-colors"
+                            >
+                                <option value="Minutes">Mins</option>
+                                <option value="Hours">Hours</option>
+                                <option value="Days">Days</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <div className="mt-6 flex items-center justify-end gap-6 text-[10px] font-black text-muted-foreground uppercase tracking-tighter">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-muted/10 border border-border" />
-                        <span>No Resolution</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/50" />
-                        <span>Standard (1-2)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-teal-500/30 border border-teal-500/50" />
-                        <span>Optimized (3-5)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-cyan-500/40 border border-cyan-500/50" />
-                        <span>Peak (6+)</span>
-                    </div>
+                    <button
+                        onClick={() => exportToCSV(RAW_CLOSURE_DATA, 'Closure_Efficiency_Raw')}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-all border border-transparent hover:border-border"
+                        title="Export Raw Data"
+                    >
+                        <Download size={14} />
+                    </button>
                 </div>
             </div>
 
-            <Dialog open={!!selectedClosed} onOpenChange={(o) => !o && setSelectedClosed(null)}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur pb-4 border-b">
-                        <DialogTitle className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setSelectedClosed(null)}
-                                    className="p-1.5 hover:bg-muted rounded-full transition-colors"
-                                    title="Go Back"
-                                >
-                                    <ArrowLeft size={16} />
-                                </button>
-                                <span className="flex items-center gap-2">
-                                    <ShieldCheck size={18} className="text-emerald-500" />
-                                    Closure Analytics: {selectedClosed?.day} @ {selectedClosed?.hour}:00
-                                </span>
-                            </span>
-                            <button
-                                onClick={() => exportToCSV(selectedClosed?.details || [], `Closure_Analytics_${selectedClosed?.day}_${selectedClosed?.hour}`)}
-                                className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 rounded border border-border hover:shadow-sm transition-all text-xs font-bold text-primary"
-                            >
-                                <Download size={14} /> Export CSV
-                            </button>
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50">
-                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Severity Analysis (Resolved)</h4>
-                            <div className="h-[200px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={[
-                                        { name: 'Critical', val: selectedClosed?.details.filter((d: any) => d.severity === 'Critical').length || 0, color: '#ef4444' },
-                                        { name: 'Major', val: selectedClosed?.details.filter((d: any) => d.severity === 'Major').length || 0, color: '#f59e0b' },
-                                        { name: 'Minor', val: selectedClosed?.details.filter((d: any) => d.severity === 'Minor').length || 0, color: '#0ea5e9' }
-                                    ]}>
-                                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <Tooltip
-                                            cursor={{ fill: 'transparent' }}
-                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Bar dataKey="val" radius={[4, 4, 0, 0]} barSize={40}>
-                                            {[
-                                                { severity: 'Critical', color: '#ef4444' },
-                                                { severity: 'Major', color: '#f59e0b' },
-                                                { severity: 'Minor', color: '#0ea5e9' }
-                                            ].map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                        <div className="bg-muted/20 rounded-xl p-4 border border-border/50 overflow-hidden flex flex-col h-[300px]">
-                            <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-4">Granular Resolution List</h4>
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                {selectedClosed?.details.map((item: any, i: number) => (
-                                    <div key={i} className="flex items-center justify-between p-2 rounded bg-card border border-border/50 text-xs">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold">{item.customer}</span>
-                                            <span className="text-[8px] text-muted-foreground uppercase">{item.severity} • {item.resolution}</span>
+            {/* Main Chart Area */}
+            <div className="flex-1 w-full min-h-[250px] relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                        data={chartData}
+                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                        barSize={40}
+                    >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
+                        <XAxis
+                            dataKey="name"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                            dy={10}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <Tooltip
+                            cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                            content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                        <div className="rounded-lg border border-border bg-popover p-3 shadow-lg">
+                                            <p className="text-xs font-bold mb-2 text-popover-foreground">{label} Range</p>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between gap-4 text-xs">
+                                                    <span className="text-muted-foreground">Total Closed:</span>
+                                                    <span className="font-mono font-bold text-primary">{data.count}</span>
+                                                </div>
+                                                <div className="h-px bg-border/50 my-1" />
+                                                <div className="flex items-center justify-between gap-4 text-[10px]">
+                                                    <span className="text-red-500">Critical:</span>
+                                                    <span className="font-mono">{data.critical}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4 text-[10px]">
+                                                    <span className="text-amber-500">Major:</span>
+                                                    <span className="font-mono">{data.major}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded font-black">
-                                            {item.timeToClose}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                        {/* Gradient Definitions */}
+                        <defs>
+                            <linearGradient id="barGradientFast" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.3} />
+                            </linearGradient>
+                            <linearGradient id="barGradientMedium" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.8} />
+                                <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.3} />
+                            </linearGradient>
+                            <linearGradient id="barGradientSlow" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8} />
+                                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3} />
+                            </linearGradient>
+                        </defs>
+                        <Bar
+                            dataKey="count"
+                            radius={[6, 6, 0, 0]}
+                            animationDuration={1000}
+                        >
+                            {chartData.map((entry, index) => {
+                                // Dynamic coloring based on position in the distribution
+                                const percentage = index / Math.max(chartData.length, 1);
+                                let fill = "url(#barGradientFast)";
+                                if (percentage > 0.3) fill = "url(#barGradientMedium)";
+                                if (percentage > 0.6) fill = "url(#barGradientSlow)";
+
+                                return <Cell key={`cell-${index}`} fill={fill} strokeWidth={0} />;
+                            })}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between text-[10px] text-muted-foreground/70">
+                <div className="flex gap-4">
+                    <span className="flex items-center gap-1.5">
+                        <span className="block w-2 h-2 rounded-full bg-emerald-500"></span> Fast Resolution
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="block w-2 h-2 rounded-full bg-amber-500"></span> Moderate
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="block w-2 h-2 rounded-full bg-red-500"></span> Delayed
+                    </span>
+                </div>
+                <div>
+                    Total Closures Monitored: <span className="font-mono font-bold text-foreground">{RAW_CLOSURE_DATA.length}</span>
+                </div>
+            </div>
+        </div>
     );
 }

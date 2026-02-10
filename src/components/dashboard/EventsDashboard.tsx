@@ -290,7 +290,7 @@ export function EventsDashboard() {
                     </div>
 
                     {/* 2 & 3. Aging and Closure Heatmaps */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                         <EventAgingHeatmap />
                         <EventClosureHeatmap />
                     </div>

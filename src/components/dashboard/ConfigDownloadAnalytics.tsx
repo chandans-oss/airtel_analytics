@@ -597,7 +597,9 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                         />
+                                        <Legend />
                                         <Line
+                                            name="Activity Count"
                                             type="monotone"
                                             dataKey="count"
                                             stroke="hsl(var(--primary))"
@@ -622,7 +624,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={profileStatusDistribution} stackOffset="expand">
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
                                         <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
@@ -645,7 +647,7 @@ export function ConfigDownloadAnalytics({ filteredContext = false }: { filteredC
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={snmpHealthByProfile}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
                                         <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
